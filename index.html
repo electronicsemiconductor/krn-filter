@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KRN科瑞诺参数筛选器</title>
+  <script src="./supabase.min.js" onerror="window.__supabaseLoadFailed=true;"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #f5f7fa;
+      color: #333;
+      line-height: 1.5;
+    }
+    .wrap { max-width: 1600px; margin: 0 auto; padding: 20px; }
+    header {
+      background: #fff;
+      border-radius: 8px;
+      padding: 24px 32px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    header h1 { font-size: 24px; color: #1a1a1a; margin-bottom: 6px; }
+    header p { color: #666; font-size: 14px; }
+    .cat-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      background: #fff;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    .cat-btn {
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: 1px solid #e0e0e0;
+      background: #fff;
+      color: #555;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .cat-btn:hover { border-color: #1890ff; color: #1890ff; }
+    .cat-btn.active { background: #1890ff; color: #fff; border-color: #1890ff; }
+    .main {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .filters {
+      background: #fff;
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .kind-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #eee;
+    }
+    .kind-btn {
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1px solid #d9d9d9;
+      background: #fff;
+      color: #555;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+    .kind-btn:hover { border-color: #1890ff; color: #1890ff; }
+    .kind-btn.active { background: #1890ff; color: #fff; border-color: #1890ff; }
+    .filter-row {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+    .filter-section {
+      flex: 0 0 170px;
+      min-width: 170px;
+      max-height: 360px;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid #f0f0f0;
+      border-radius: 6px;
+      padding: 10px 12px;
+      background: #fafbfc;
+    }
+    .filter-title {
+      font-weight: 600;
+      font-size: 13px;
+      color: #1a1a1a;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #f0f0f0;
+      padding-bottom: 6px;
+    }
+    .filter-title .reset {
+      font-size: 12px;
+      color: #1890ff;
+      cursor: pointer;
+      font-weight: normal;
+    }
+    .filter-title .reset:hover { text-decoration: underline; }
+    .filter-search {
+      width: 100%;
+      padding: 5px 8px;
+      border: 1px solid #d9d9d9;
+      border-radius: 4px;
+      font-size: 12px;
+      margin-bottom: 6px;
+      outline: none;
+    }
+    .filter-search:focus { border-color: #1890ff; }
+    .filter-options {
+      flex: 1;
+      overflow-y: auto;
+      min-height: 0;
+    }
+    .filter-option {
+      display: flex;
+      align-items: center;
+      padding: 3px 0;
+      cursor: pointer;
+      font-size: 12px;
+      color: #555;
+    }
+    .filter-option:hover { color: #1890ff; }
+    .filter-option input { margin-right: 6px; }
+    .results {
+      background: #fff;
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .results-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #eee;
+    }
+    .results-count { font-size: 14px; color: #666; }
+    .results-count strong { color: #1890ff; }
+    .clear-all {
+      font-size: 13px;
+      color: #1890ff;
+      cursor: pointer;
+      padding: 4px 10px;
+      border-radius: 4px;
+    }
+    .clear-all:hover { background: #e6f7ff; }
+    .results-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .results-table th, .results-table td {
+      padding: 12px 10px;
+      text-align: left;
+      border-bottom: 1px solid #f0f0f0;
+      white-space: nowrap;
+    }
+    .results-table th {
+      background: #fafafa;
+      font-weight: 600;
+      color: #1a1a1a;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .results-table td { color: #555; }
+    .results-table tr:hover td { background: #f6fbff; }
+    .results-table .model { font-weight: 600; color: #1890ff; }
+    .results-table .price { color: #f56c6c; font-weight: 600; }
+    .results-table .no-datasheet { color: #999; font-size: 12px; }
+    .prod-img-thumb {
+      width: 48px;
+      height: 48px;
+      object-fit: contain;
+      border: 1px solid #eee;
+      border-radius: 4px;
+      background: #fff;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .prod-img-thumb:hover { transform: scale(1.05); border-color: #1890ff; }
+    .prod-img-placeholder {
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px dashed #ddd;
+      border-radius: 4px;
+      color: #bbb;
+      font-size: 11px;
+      background: #fafafa;
+    }
+    .lightbox-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      cursor: zoom-out;
+    }
+    .lightbox-overlay img {
+      max-width: 90%;
+      max-height: 90%;
+      object-fit: contain;
+      background: #fff;
+      border-radius: 4px;
+      padding: 8px;
+    }
+    .remarks-cell {
+      max-width: 200px;
+      white-space: normal;
+      font-size: 12px;
+      color: #666;
+      line-height: 1.4;
+    }
+
+    .datasheet-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      background: #1890ff;
+      color: #fff;
+      border-radius: 4px;
+      text-decoration: none;
+      font-size: 12px;
+    }
+    .datasheet-link:hover { background: #40a9ff; }
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #999;
+    }
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #666;
+    }
+    .error-tip {
+      background: #fff2f0;
+      border: 1px solid #ffccc7;
+      color: #cf1322;
+      padding: 12px 16px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      font-size: 13px;
+    }
+    @media (max-width: 768px) {
+      .filter-section { flex: 0 0 140px; min-width: 140px; max-height: 280px; }
+      .results-table { font-size: 12px; }
+      .results-table th, .results-table td { padding: 8px 6px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>KRN科瑞诺参数筛选器</h1>
+      <p>选择产品分类与子类型，按参数维度快速匹配型号</p>
+    </header>
+    <div class="cat-bar" id="catBar"><div class="loading">正在加载数据...</div></div>
+    <div class="main">
+      <div class="filters" id="filters"></div>
+      <div class="results" id="results"></div>
+    </div>
+  </div>
+
+<script>
+// ==================== Supabase 配置 ====================
+const SUPABASE_URL = 'https://xbevlbuhrnzmtfmseqsj.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_hclTTu_Tn46Z8l3FG2U9mQ_jSXr7wl-';
+// 注意:不能叫 supabase,因为 SDK 文件顶层已用 var supabase = (function(){})() 声明,
+// 这里再用 let/const 会触发 SyntaxError: Identifier 'supabase' has already been declared
+let _supabaseClient = null;
+
+function initSupabaseClient() {
+  if (_supabaseClient) return true;
+  if (window.__supabaseLoadFailed) return false;
+  if (window.supabase && window.supabase.createClient) {
+    try {
+      _supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+  return false;
+}
+// 立刻尝试一次（同步加载场景下此时 SDK 已就绪）
+initSupabaseClient();
+
+// ==================== 内嵌数据（Supabase 失败时降级） ====================
+const FALLBACK_DATA = {
+  categories: [
+    {
+      id: 'power', name: '电源管理', display_name: '电源管理',
+      kinds_config: {
+        kinds: [
+          { key: 'ldo', name: '线性稳压器(LDO)', filters: [
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'vin', name:'输入耐压(V)', type:'checkbox'},
+            {key:'iout', name:'工作电流(Max)', type:'checkbox'},
+            {key:'vout', name:'输出电压(V)', type:'checkbox'},
+            {key:'iq', name:'静态功耗(μA)', type:'checkbox'},
+            {key:'psrr', name:'纹波抑制比（1K Hz）', type:'checkbox'}
+          ]},
+          { key: 'three_term', name: '三端稳压器', filters: [
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'iout', name:'输出电流(Max)', type:'checkbox'},
+            {key:'vin', name:'工作电压(V)', type:'checkbox'},
+            {key:'vout', name:'输出电压(V)', type:'checkbox'},
+            {key:'iq', name:'静态功耗(μA)', type:'checkbox'},
+            {key:'psrr', name:'纹波抑制比（1K Hz）', type:'checkbox'}
+          ]},
+          { key: 'buck', name: '降压IC', filters: [
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'freq', name:'开关频率', type:'checkbox'},
+            {key:'vref', name:'基准电压(V)', type:'checkbox'},
+            {key:'iout', name:'输出电流(Max)', type:'checkbox'},
+            {key:'vin', name:'输入电压', type:'checkbox'},
+            {key:'vout', name:'输出电压(V)', type:'checkbox'}
+          ]},
+          { key: 'boost', name: '升压IC', filters: [
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'freq', name:'开关频率', type:'checkbox'},
+            {key:'vref', name:'基准电压(V)', type:'checkbox'},
+            {key:'eff', name:'工作效率', type:'checkbox'},
+            {key:'ilim', name:'开关电流限制(LIM)', type:'checkbox'},
+            {key:'vin', name:'输入电压', type:'checkbox'},
+            {key:'vout', name:'输出电压(V)', type:'checkbox'}
+          ]},
+          { key: 'battery', name: '电池管理', filters: [
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'ichg', name:'充电电流(Max)', type:'checkbox'},
+            {key:'vacc', name:'输出电压精度', type:'checkbox'},
+            {key:'anti_rev', name:'电池防反接', type:'checkbox'},
+            {key:'vin', name:'工作电压(V)', type:'checkbox'},
+            {key:'iq', name:'静态功耗(μA)', type:'checkbox'}
+          ]},
+          { key: 'reset', name: '复位芯片', filters: [
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'delay', name:'延迟', type:'checkbox'},
+            {key:'vreset', name:'复位值电压', type:'checkbox'},
+            {key:'acc', name:'检测精度', type:'checkbox'},
+            {key:'vin', name:'工作电压(V)', type:'checkbox'},
+            {key:'iq', name:'静态功耗(μA)', type:'checkbox'}
+          ]},
+          { key: 'vref', name: '基准芯片', filters: [
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'vref', name:'基准电压(V)', type:'checkbox'},
+            {key:'vacc', name:'输出电压精度', type:'checkbox'},
+            {key:'acc', name:'检测精度', type:'checkbox'},
+            {key:'iout', name:'输出电流(Max)', type:'checkbox'},
+            {key:'vin', name:'输入耐压(V)', type:'checkbox'},
+            {key:'vout', name:'输出电压(V)', type:'checkbox'}
+          ]},
+          { key: 'current_sense', name: '电流感应放大器', filters: [
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'acc', name:'检测精度', type:'checkbox'},
+            {key:'vin', name:'输入电压', type:'checkbox'},
+            {key:'iq', name:'静态功耗(μA)', type:'checkbox'}
+          ]},
+          { key: 'gate_driver', name: '栅极驱动芯片', filters: [
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'iout', name:'输出电流(Max)', type:'checkbox'},
+            {key:'vin', name:'输入电压', type:'checkbox'},
+            {key:'iq', name:'静态功耗(μA)', type:'checkbox'}
+          ]}
+        ]
+      }
+    },
+    {
+      id: 'esd', name: 'ESD静电保护管', display_name: 'ESD静电保护管',
+      kinds_config: {
+        kinds: [
+          { key: 'esd', name: 'ESD静电保护', filters: [
+            {key:'sub_kind', name:'种类', type:'checkbox'},
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'vrwm', name:'VRWM(V)', type:'checkbox'},
+            {key:'channel', name:'Channel', type:'checkbox'},
+            {key:'cj', name:'Cj(pF)', type:'checkbox'},
+            {key:'ipp', name:'IPP(A)', type:'checkbox'}
+          ]},
+          { key: 'polymer', name: '高分子', filters: [
+            {key:'ipp', name:'IPP(A)', type:'checkbox'},
+            {key:'channel', name:'Channel', type:'checkbox'},
+            {key:'vrwm', name:'VRWM(V)', type:'checkbox'},
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'cj', name:'Cj(pF)', type:'checkbox'}
+          ]}
+        ]
+      }
+    },
+    {
+      id: 'gdt', name: '气体放电管', display_name: '气体放电管',
+      kinds_config: {
+        kinds: [
+          { key: 'tss', name: '半导体放电管', filters: [
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'vsmax', name:'Vs(max)', type:'checkbox'},
+            {key:'is', name:'Is', type:'checkbox'},
+            {key:'id_vd', name:'Id@Vd(max)', type:'checkbox'},
+            {key:'vd', name:'Vd', type:'checkbox'},
+            {key:'co', name:'Co*(typ)', type:'checkbox'},
+            {key:'ih', name:'Ih(min)', type:'checkbox'}
+          ]},
+          { key: 'ceramic', name: '陶瓷气体放电管', filters: [
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'vsmax', name:'Vs(max)', type:'checkbox'},
+            {key:'kv_us', name:'@1KV/μs', type:'checkbox'},
+            {key:'gohm', name:'1 GΩ', type:'checkbox'},
+            {key:'mhz_pf', name:'@1MHz(pF)', type:'checkbox'},
+            {key:'times_20us', name:'@8/20μs ±5 times', type:'checkbox'}
+          ]}
+        ]
+      }
+    },
+    {
+      id: 'bjt', name: '通用二三极管', display_name: '通用二三极管',
+      kinds_config: {
+        kinds: [
+          { key: 'schottky', name: '肖特基二极管', filters: [
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'vr', name:'VR(V)', type:'checkbox'},
+            {key:'if', name:'If(A)', type:'checkbox'},
+            {key:'vf', name:'VF(V)', type:'checkbox'},
+            {key:'ifsm', name:'Ifsm(A)', type:'checkbox'},
+            {key:'ir', name:'IR(uA)max.', type:'checkbox'}
+          ]},
+          { key: 'fast_recovery', name: '快恢复二极管', filters: [
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'if', name:'If(A)', type:'checkbox'},
+            {key:'vf', name:'VF(V)', type:'checkbox'},
+            {key:'ifsm', name:'Ifsm(A)', type:'checkbox'},
+            {key:'vr_min', name:'VR(V)Min.', type:'checkbox'}
+          ]},
+          { key: 'switching', name: '开关二极管', filters: [
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'vf', name:'VF(V)', type:'checkbox'},
+            {key:'ptot', name:'Ptot(W)', type:'checkbox'},
+            {key:'io', name:'IO(mA)', type:'checkbox'},
+            {key:'vr_min', name:'VR(V)Min.', type:'checkbox'},
+            {key:'ir_vr', name:'IR@VR(V)', type:'checkbox'}
+          ]},
+          { key: 'zener', name: '稳压二极管', filters: [
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'vzt', name:'VZT(V)typ', type:'checkbox'},
+            {key:'izt', name:'IZT(mA)', type:'checkbox'},
+            {key:'zzt', name:'ZZT(Ω)', type:'checkbox'},
+            {key:'zzk', name:'ZZK(Ω)', type:'checkbox'},
+            {key:'izk', name:'IZK(mA)', type:'checkbox'}
+          ]},
+          { key: 'general_diode', name: '通用二极管', filters: [
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'if', name:'If(A)', type:'checkbox'},
+            {key:'vf', name:'VF(V)', type:'checkbox'},
+            {key:'vr_min', name:'VR(V)Min.', type:'checkbox'}
+          ]},
+          { key: 'transistor', name: '通用三极管', filters: [
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'type', name:'Type', type:'checkbox'},
+            {key:'vcbo', name:'VCBO(V)', type:'checkbox'},
+            {key:'vceo', name:'VCEO(V)', type:'checkbox'},
+            {key:'ic', name:'IC(A)', type:'checkbox'},
+            {key:'hfe_min', name:'hFE(Min.)', type:'checkbox'},
+            {key:'hfe_max', name:'hFE(Max.)', type:'checkbox'}
+          ]},
+          { key: 'digital_transistor', name: '数字晶体管', filters: [
+            {key:'type', name:'Type', type:'checkbox'},
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'vcc', name:'VCC(A)', type:'checkbox'},
+            {key:'io', name:'IO(mA)', type:'checkbox'},
+            {key:'vo_on', name:'VO(on)', type:'checkbox'},
+            {key:'r1', name:'R1', type:'checkbox'},
+            {key:'r2', name:'R2', type:'checkbox'}
+          ]}
+        ]
+      }
+    },
+    {
+      id: 'opamp', name: '运算放大器及比较器', display_name: '运算放大器及比较器',
+      kinds_config: {
+        kinds: [
+          { key: 'opamp', name: '运算放大器', filters: [
+            {key:'power_supply', name:'Power supply', type:'checkbox'},
+            {key:'rail_to_rail', name:'Rail to Rail', type:'checkbox'},
+            {key:'gbw', name:'GBW', type:'checkbox'},
+            {key:'iq', name:'IQ', type:'checkbox'},
+            {key:'input_bias', name:'Input Bias Current', type:'checkbox'},
+            {key:'package', name:'Package', type:'checkbox'}
+          ]},
+          { key: 'comparator', name: '比较器', filters: [
+            {key:'power_supply', name:'Power supply', type:'checkbox'},
+            {key:'rail_to_rail', name:'Rail to Rail', type:'checkbox'},
+            {key:'channel', name:'Channel', type:'checkbox'},
+            {key:'iq', name:'IQ', type:'checkbox'},
+            {key:'max_vos', name:'Maxmum Vos', type:'checkbox'},
+            {key:'package', name:'Package', type:'checkbox'}
+          ]}
+        ]
+      }
+    },
+    {
+      id: 'mos', name: '场效应管（MOS管）', display_name: '场效应管（MOS管）',
+      kinds_config: {
+        kinds: [
+          { key: 'default', name: 'MOS管', filters: [
+            {key:'kind', name:'种类', type:'checkbox'},
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'with_esd', name:'With ESD', type:'checkbox'},
+            {key:'vds', name:'Vds(V)', type:'checkbox'},
+            {key:'vgs', name:'Vgs(±V)', type:'checkbox'},
+            {key:'id', name:'Id(A)', type:'checkbox'},
+            {key:'vgs_th', name:'VGS(th)V Typ', type:'checkbox'},
+            {key:'rds_on', name:'Rds(on) 10V', type:'checkbox'}
+          ]}
+        ]
+      }
+    },
+    {
+      id: 'tvs', name: '瞬态抑制二极管', display_name: '瞬态抑制二极管',
+      kinds_config: {
+        kinds: [
+          { key: 'default', name: 'TVS', filters: [
+            {key:'kind', name:'种类', type:'checkbox'},
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'uni_bi', name:'UNI/BI', type:'checkbox'},
+            {key:'vrwm', name:'Vrwm(V)', type:'checkbox'},
+            {key:'pppm', name:'PPPM(W)', type:'checkbox'},
+            {key:'vbr_min', name:'Vbr(V)min', type:'checkbox'},
+            {key:'vbr_max', name:'Vbr(V)Max', type:'checkbox'},
+            {key:'ir', name:'Ir(uA)', type:'checkbox'}
+          ]}
+        ]
+      }
+    },
+    {
+      id: 'switch_interface', name: '开关芯片及接口芯片', display_name: '开关芯片及接口芯片',
+      kinds_config: {
+        kinds: [
+          { key: 'default', name: '开关芯片及接口芯片', filters: [
+            {key:'kind', name:'种类', type:'checkbox'},
+            {key:'package', name:'Package', type:'checkbox'}
+          ]}
+        ]
+      }
+    },
+    {
+      id: 'sensor', name: '传感器', display_name: '传感器',
+      kinds_config: {
+        kinds: [
+          { key: 'ambient_light', name: '环境光传感器', filters: [
+            {key:'vceo', name:'VCEO(V)', type:'checkbox'},
+            {key:'lambda_p', name:'λp(nm)', type:'checkbox'},
+            {key:'tr', name:'tr(S)', type:'checkbox'},
+            {key:'pc', name:'PC(W)', type:'checkbox'},
+            {key:'topr', name:'Topr(℃)', type:'checkbox'},
+            {key:'package', name:'Package', type:'checkbox'}
+          ]},
+          { key: 'current', name: '电流传感器', filters: [
+            {key:'vcc', name:'Vcc(V)', type:'checkbox'},
+            {key:'icc', name:'Icc(A)', type:'checkbox'},
+            {key:'ip', name:'Ip(A)', type:'checkbox'},
+            {key:'sens', name:'Sens(mV/A)', type:'checkbox'},
+            {key:'ta', name:'TA(℃)', type:'checkbox'},
+            {key:'package', name:'Package', type:'checkbox'}
+          ]},
+          { key: 'fiber_laser', name: '光纤/激光传感器', filters: [
+            {key:'vcc', name:'Vcc(V)', type:'checkbox'},
+            {key:'lsb0', name:'LSB0(ps)', type:'checkbox'},
+            {key:'lsb1', name:'LSB1(ps)', type:'checkbox'},
+            {key:'tm', name:'tm(S)', type:'checkbox'},
+            {key:'ta', name:'Ta(℃)', type:'checkbox'},
+            {key:'package', name:'Package', type:'checkbox'}
+          ]},
+          { key: 'hall', name: '霍尔传感器', filters: [
+            {key:'polarity', name:'Polarity', type:'checkbox'},
+            {key:'vdd', name:'VDD(V)', type:'checkbox'},
+            {key:'idd', name:'IDD(A)', type:'checkbox'},
+            {key:'scanning_freq', name:'Scanning frequency', type:'checkbox'},
+            {key:'package', name:'Package', type:'checkbox'}
+          ]},
+          { key: 'temperature', name: '温度传感器', filters: [
+            {key:'polarity', name:'Polarity', type:'checkbox'},
+            {key:'vdd', name:'VDD(V)', type:'checkbox'},
+            {key:'idd', name:'IDD(A)', type:'checkbox'},
+            {key:'scanning_freq', name:'Scanning frequency', type:'checkbox'},
+            {key:'package', name:'Package', type:'checkbox'}
+          ]}
+        ]
+      }
+    },
+    {
+      id: 'optoelectronics', name: '光电器件', display_name: '光电器件',
+      kinds_config: {
+        kinds: [
+          { key: 'optocoupler', name: '光耦', filters: [
+            {key:'output_type', name:'输出类型', type:'checkbox'},
+            {key:'vceo', name:'VCEO(V)', type:'checkbox'},
+            {key:'ic_itsm', name:'IC/ITSM(A)', type:'checkbox'},
+            {key:'vr', name:'VR(V)', type:'checkbox'},
+            {key:'if', name:'IF(A)', type:'checkbox'},
+            {key:'package', name:'Package', type:'checkbox'}
+          ]},
+          { key: 'photodiode', name: '光电二极管', filters: [
+            {key:'vr', name:'VR(V)', type:'checkbox'},
+            {key:'id', name:'ID(nA)', type:'checkbox'},
+            {key:'topr', name:'Topr(℃)', type:'checkbox'},
+            {key:'lambda', name:'λ(nm)', type:'checkbox'},
+            {key:'package', name:'Package', type:'checkbox'}
+          ]}
+        ]
+      }
+    }
+  ],
+  products: [
+    {category:'power', kind:'ldo', model:'XC6206P332MR', manufacturer:'TOREX', spec_data:{package:'SOT-23', vin:'6V', iout:'200mA', vout:'3.3V', iq:'1.0μA', psrr:'50dB'}, price:'0.12', datasheet_url:'', image_url:'', remarks:''},
+    {category:'power', kind:'ldo', model:'AMS1117-3.3', manufacturer:'AMS', spec_data:{package:'SOT-223', vin:'15V', iout:'1A', vout:'3.3V', iq:'5mA', psrr:'60dB'}, price:'0.25', datasheet_url:'', image_url:'', remarks:''},
+    {category:'power', kind:'three_term', model:'LM7805CT', manufacturer:'TI', spec_data:{package:'TO-220', iout:'1.5A', vin:'25V', vout:'5V', iq:'8mA', psrr:'62dB'}, price:'0.58', datasheet_url:'', image_url:'', remarks:''},
+    {category:'power', kind:'buck', model:'MP1584EN', manufacturer:'MPS', spec_data:{package:'SOP-8', freq:'1.5MHz', vref:'0.8V', iout:'3A', vin:'4.5V-28V', vout:'0.8V-24V'}, price:'1.20', datasheet_url:'', image_url:'', remarks:''},
+    {category:'power', kind:'boost', model:'MT3608', manufacturer:'MicrOne', spec_data:{package:'SOT-23-6', freq:'1.2MHz', vref:'0.6V', eff:'93%', ilim:'2A', vin:'2V-24V', vout:'5V-28V'}, price:'0.35', datasheet_url:'', image_url:'', remarks:''},
+    {category:'power', kind:'battery', model:'TP4056', manufacturer:'拓微', spec_data:{package:'SOP-8', ichg:'1A', vacc:'1.5%', anti_rev:'有', vin:'4V-8V', iq:'80μA'}, price:'0.85', datasheet_url:'', image_url:'', remarks:''},
+    {category:'power', kind:'reset', model:'IMP811', manufacturer:'IMP', spec_data:{package:'SOT-143', delay:'240ms', vreset:'3.08V', acc:'1.5%', vin:'1.1V-5.5V', iq:'5μA'}, price:'0.42', datasheet_url:'', image_url:'', remarks:''},
+    {category:'power', kind:'vref', model:'TL431', manufacturer:'TI', spec_data:{package:'SOT-23', vref:'2.5V', vacc:'1%', acc:'0.5%', iout:'100mA', vin:'36V', vout:'2.5V-36V'}, price:'0.18', datasheet_url:'', image_url:'', remarks:''},
+    {category:'power', kind:'current_sense', model:'INA199A1', manufacturer:'TI', spec_data:{package:'SOT-23-6', acc:'1.5%', vin:'2.7V-26V', iq:'100μA'}, price:'0.95', datasheet_url:'', image_url:'', remarks:''},
+    {category:'power', kind:'gate_driver', model:'IR2104', manufacturer:'Infineon', spec_data:{package:'SOP-8', iout:'130mA/270mA', vin:'10V-20V', iq:'30μA'}, price:'1.10', datasheet_url:'', image_url:'', remarks:''},
+    {category:'esd', kind:'esd', model:'ESD9B3.3T5G', manufacturer:'ON Semiconductor', spec_data:{sub_kind:'低电容ESD静电防护', package:'SOD-523', vrwm:'3.3V', channel:'1-Line', cj:'0.5', ipp:'2.0'}, price:'0.038', datasheet_url:'', image_url:'', remarks:''},
+    {category:'esd', kind:'polymer', model:'PESD1206-240', manufacturer:'Littelfuse', spec_data:{ipp:'5.0', channel:'2-Line', vrwm:'24V', package:'1206', cj:'0.5'}, price:'0.65', datasheet_url:'', image_url:'', remarks:''},
+    {category:'gdt', kind:'tss', model:'P0080SCL', manufacturer:'Littelfuse', spec_data:{package:'DO-214AA', vsmax:'6V', is:'50mA', id_vd:'1A', vd:'4V', co:'50pF', ih:'50mA'}, price:'0.78', datasheet_url:'', image_url:'', remarks:''},
+    {category:'gdt', kind:'ceramic', model:'CG2.5L-TR', manufacturer:'EPCOS', spec_data:{package:'2R5', vsmax:'2.5kV', kv_us:'3kV', gohm:'1', mhz_pf:'1.5', times_20us:'5'}, price:'0.32', datasheet_url:'', image_url:'', remarks:''},
+    {category:'bjt', kind:'schottky', model:'SS34', manufacturer:'Vishay', spec_data:{package:'SMA', vr:'40V', if:'3A', vf:'0.5V', ifsm:'100A', ir:'0.5mA'}, price:'0.12', datasheet_url:'', image_url:'', remarks:''},
+    {category:'bjt', kind:'fast_recovery', model:'US1M', manufacturer:'Vishay', spec_data:{package:'SMA', if:'1A', vf:'1.0V', ifsm:'30A', vr_min:'1000V'}, price:'0.08', datasheet_url:'', image_url:'', remarks:''},
+    {category:'bjt', kind:'switching', model:'1N4148W', manufacturer:'Vishay', spec_data:{package:'SOD-123', vf:'1.0V', ptot:'0.5W', io:'150mA', vr_min:'75V', ir_vr:'25nA'}, price:'0.03', datasheet_url:'', image_url:'', remarks:''},
+    {category:'bjt', kind:'zener', model:'BZT52C3V3', manufacturer:'Vishay', spec_data:{package:'SOD-123', vzt:'3.3V', izt:'5mA', zzt:'95Ω', zzk:'600Ω', izk:'0.5mA'}, price:'0.04', datasheet_url:'', image_url:'', remarks:''},
+    {category:'bjt', kind:'general_diode', model:'1N4007', manufacturer:'LGE', spec_data:{package:'DO-41', if:'1A', vf:'1.1V', vr_min:'1000V'}, price:'0.04', datasheet_url:'', image_url:'', remarks:''},
+    {category:'bjt', kind:'transistor', model:'S8050', manufacturer:'LGE', spec_data:{package:'SOT-23', type:'NPN', vcbo:'40V', vceo:'25V', ic:'0.5A', hfe_min:'120', hfe_max:'350'}, price:'0.03', datasheet_url:'', image_url:'', remarks:''},
+    {category:'bjt', kind:'digital_transistor', model:'DTC143Z', manufacturer:'ROHM', spec_data:{type:'NPN', package:'SOT-23', vcc:'50V', io:'0.1A', vo_on:'0.3V', r1:'4.7k', r2:'47k'}, price:'0.05', datasheet_url:'', image_url:'', remarks:''},
+    {category:'opamp', kind:'opamp', model:'LM358', manufacturer:'TI', spec_data:{power_supply:'3V-32V', rail_to_rail:'NO', gbw:'1MHz', iq:'700μA', input_bias:'45nA', package:'SOP-8'}, price:'0.25', datasheet_url:'', image_url:'', remarks:''},
+    {category:'opamp', kind:'comparator', model:'LM393', manufacturer:'TI', spec_data:{power_supply:'2V-36V', rail_to_rail:'NO', channel:'2-Line', iq:'0.8mA', max_vos:'5mV', package:'SOP-8'}, price:'0.15', datasheet_url:'', image_url:'', remarks:''},
+    {category:'mos', kind:'default', model:'AO3400', manufacturer:'AOS', spec_data:{kind:'N-Ch', package:'SOT-23', with_esd:'NO', vds:'30V', vgs:'12V', id:'5.7A', vgs_th:'1.4V', rds_on:'28mΩ'}, price:'0.08', datasheet_url:'', image_url:'', remarks:''},
+    {category:'tvs', kind:'default', model:'SMAJ5.0A', manufacturer:'Littelfuse', spec_data:{kind:'SMAJ', package:'DO-214AC', uni_bi:'UNI', vrwm:'5V', pppm:'400W', vbr_min:'6.4V', vbr_max:'7.07V', ir:'800μA'}, price:'0.12', datasheet_url:'', image_url:'', remarks:''},
+    {category:'switch_interface', kind:'default', model:'SGM3157', manufacturer:'SGMICRO', spec_data:{kind:'模拟开关', package:'SC-70-6'}, price:'0.18', datasheet_url:'', image_url:'', remarks:''},
+    {category:'switch_interface', kind:'default', model:'CH440R', manufacturer:'WCH', spec_data:{kind:'USB功率及负载开关', package:'SOP-8'}, price:'0.65', datasheet_url:'', image_url:'', remarks:''},
+    {category:'switch_interface', kind:'default', model:'SP3485EN', manufacturer:'MaxLinear', spec_data:{kind:'RS-485/RS-422芯片(收发器)', package:'SOP-8'}, price:'0.42', datasheet_url:'', image_url:'', remarks:''},
+    {category:'switch_interface', kind:'default', model:'MAX3232', manufacturer:'TI', spec_data:{kind:'RS232芯片(收发器)', package:'SOP-16'}, price:'0.85', datasheet_url:'', image_url:'', remarks:''},
+    {category:'switch_interface', kind:'default', model:'PE4259', manufacturer:'Peregrine', spec_data:{kind:'射频开关', package:'SOT-23-6'}, price:'0.55', datasheet_url:'', image_url:'', remarks:''},
+    {category:'sensor', kind:'ambient_light', model:'APDS-9960', manufacturer:'Avago', spec_data:{vceo:'30V', lambda_p:'550nm', tr:'15μs', pc:'70mW', topr:'-30℃~85℃', package:'SMD'}, price:'1.20', datasheet_url:'', image_url:'', remarks:''},
+    {category:'sensor', kind:'current', model:'ACS712', manufacturer:'Allegro', spec_data:{vcc:'5V', icc:'11.18mA', ip:'±5A', sens:'400mV/A', ta:'-40℃~150℃', package:'SOP-8'}, price:'1.50', datasheet_url:'', image_url:'', remarks:''},
+    {category:'sensor', kind:'fiber_laser', model:'ADNS-9800', manufacturer:'PixArt', spec_data:{vcc:'2.5V~3.6V', lsb0:'7ps@DOUBLE_RES', lsb1:'37ps@DOUBLE_RES', tm:'3.5ns~2.4μs', ta:'-40℃~125℃', package:'QFN-32'}, price:'3.20', datasheet_url:'', image_url:'', remarks:''},
+    {category:'sensor', kind:'hall', model:'A3144', manufacturer:'Allegro', spec_data:{polarity:'单N极', vdd:'15V', idd:'0.7mA', scanning_freq:'2.5kHz', package:'SOT-23-3L'}, price:'0.35', datasheet_url:'', image_url:'', remarks:''},
+    {category:'sensor', kind:'temperature', model:'DS18B20', manufacturer:'Maxim', spec_data:{polarity:'-', vdd:'3.3V', idd:'1.3mA', scanning_freq:'-', package:'SMD'}, price:'0.95', datasheet_url:'', image_url:'', remarks:''},
+    {category:'optoelectronics', kind:'optocoupler', model:'PC817C', manufacturer:'Sharp', spec_data:{output_type:'光电晶体管输出', vceo:'80V', ic_itsm:'0.05A', vr:'6V', if:'50mA', package:'DIP-4'}, price:'0.08', datasheet_url:'', image_url:'', remarks:''},
+    {category:'optoelectronics', kind:'optocoupler', model:'TLP521-1', manufacturer:'Toshiba', spec_data:{output_type:'光电晶体管输出', vceo:'55V', ic_itsm:'0.05A', vr:'5V', if:'50mA', package:'DIP-4'}, price:'0.12', datasheet_url:'', image_url:'', remarks:''},
+    {category:'optoelectronics', kind:'optocoupler', model:'LTV-817S', manufacturer:'Lite-On', spec_data:{output_type:'光电晶体管输出', vceo:'35V', ic_itsm:'0.05A', vr:'6V', if:'50mA', package:'SOP-4'}, price:'0.10', datasheet_url:'', image_url:'', remarks:''},
+    {category:'optoelectronics', kind:'photodiode', model:'BPW34', manufacturer:'OSRAM', spec_data:{vr:'60V', id:'0.1nA', topr:'-40~100℃', lambda:'400~1100nm', package:'1206'}, price:'0.25', datasheet_url:'', image_url:'', remarks:''},
+    {category:'optoelectronics', kind:'photodiode', model:'PIN-10D', manufacturer:'Hamamatsu', spec_data:{vr:'40V', id:'0.05nA', topr:'-40~85℃', lambda:'400~1100nm', package:'DIP-2'}, price:'1.20', datasheet_url:'', image_url:'', remarks:''}
+  ]
+};
+
+// ==================== 状态 ====================
+let appState = {
+  categories: [],
+  products: [],
+  currentCategoryId: 'power',
+  currentKindKey: '',
+  selectedFilters: {}, // { [filterKey]: Set }
+  searchTerms: {},     // { [filterKey]: string }
+  loading: true,
+  error: null
+};
+
+// ==================== 初始化 ====================
+async function init() {
+  // 先用内嵌数据渲染，确保页面不空白
+  appState.categories = FALLBACK_DATA.categories;
+  appState.products = FALLBACK_DATA.products;
+  appState.loading = false;
+  initCategoryAndKind();
+  renderAll();
+
+  // 异步尝试从 Supabase 加载最新数据
+  // 若 SDK 使用 defer 加载，可能此时 window.supabase 还未就绪，需要等待
+  if (!_supabaseClient) {
+    for (let i = 0; i < 30; i++) { // 最多等 3 秒
+      await new Promise(r => setTimeout(r, 100));
+      if (initSupabaseClient()) break;
+      if (window.__supabaseLoadFailed) break;
+    }
+  }
+
+  if (_supabaseClient) {
+    try {
+      const [{ data: cats, error: err1 }, { data: prods, error: err2 }] = await Promise.all([
+        _supabaseClient.from('categories').select('*'),
+        _supabaseClient.from('products').select('*')
+      ]);
+      if (err1) throw err1;
+      if (err2) throw err2;
+      if (cats && cats.length && prods) {
+        appState.categories = cats;
+        appState.products = prods;
+        initCategoryAndKind();
+        appState.selectedFilters = {};
+        appState.searchTerms = {};
+        renderAll();
+      } else {
+      }
+    } catch (e) {
+      console.error('Supabase 加载失败:', e);
+    }
+  } else if (window.__supabaseLoadFailed) {
+    console.error('Supabase SDK 加载失败（CDN 不可达）');
+  } else {
+    console.error('Supabase SDK 未就绪（超时 3 秒）');
+  }
+}
+
+function initCategoryAndKind() {
+  if (!appState.categories.length) return;
+  const cat = appState.categories.find(c => c.id === appState.currentCategoryId) || appState.categories[0];
+  appState.currentCategoryId = cat.id;
+  const kinds = cat.kinds_config?.kinds || [];
+  appState.currentKindKey = kinds.length ? kinds[0].key : '';
+  appState.selectedFilters = {};
+  appState.searchTerms = {};
+}
+
+function getCategory() {
+  return appState.categories.find(c => c.id === appState.currentCategoryId) || appState.categories[0];
+}
+
+function getKinds() {
+  const cat = getCategory();
+  return cat?.kinds_config?.kinds || [];
+}
+
+function getCurrentKind() {
+  return getKinds().find(k => k.key === appState.currentKindKey) || getKinds()[0];
+}
+
+// ==================== 渲染 ====================
+function renderAll() {
+  if (appState.loading) {
+    document.getElementById('catBar').innerHTML = '<div class="loading">正在加载数据...</div>';
+    document.getElementById('filters').innerHTML = '';
+    document.getElementById('results').innerHTML = '';
+    return;
+  }
+  renderCatBar();
+  renderFilters();
+  renderResults();
+}
+
+function renderCatBar() {
+  const bar = document.getElementById('catBar');
+  bar.innerHTML = appState.categories.map(cat => {
+    const active = cat.id === appState.currentCategoryId ? 'active' : '';
+    return `<button class="cat-btn ${active}" data-id="${cat.id}">${cat.display_name}</button>`;
+  }).join('');
+  bar.querySelectorAll('.cat-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      appState.currentCategoryId = btn.dataset.id;
+      initCategoryAndKind();
+      renderAll();
+    });
+  });
+}
+
+function renderFilters() {
+  const panel = document.getElementById('filters');
+  const kinds = getKinds();
+  const currentKind = getCurrentKind();
+  if (!currentKind) {
+    panel.innerHTML = '<div class="empty-state">暂无筛选配置</div>';
+    return;
+  }
+
+  let html = '';
+  // 子类型切换（仅当分类下存在多个子类型时显示）
+  if (kinds.length > 1) {
+    html += `<div class="kind-bar">` + kinds.map(k => {
+      const active = k.key === appState.currentKindKey ? 'active' : '';
+      return `<button class="kind-btn ${active}" data-key="${k.key}">${k.name}</button>`;
+    }).join('') + `</div>`;
+  }
+
+  // 动态筛选列 — 横向并排容器
+  html += `<div class="filter-row">`;
+  // 动态筛选列
+  currentKind.filters.forEach(filter => {
+    const options = getFilterOptions(filter.key);
+    const selected = appState.selectedFilters[filter.key] || new Set();
+    const searchTerm = appState.searchTerms[filter.key] || '';
+    const filteredOptions = options.filter(o => o.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    html += `
+      <div class="filter-section">
+        <div class="filter-title">
+          <span>${filter.name}</span>
+          <span class="reset" data-key="${filter.key}">重置</span>
+        </div>
+        <input type="text" class="filter-search" placeholder="搜索..." data-key="${filter.key}" value="${escapeHtml(searchTerm)}">
+        <div class="filter-options">
+          ${filteredOptions.map(opt => `
+            <label class="filter-option">
+              <input type="checkbox" data-key="${filter.key}" value="${escapeHtml(opt)}" ${selected.has(opt) ? 'checked' : ''}>
+              <span>${escapeHtml(opt)}</span>
+            </label>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  });
+  html += `</div>`;
+
+  panel.innerHTML = html;
+
+  // 子类型切换事件
+  panel.querySelectorAll('.kind-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      appState.currentKindKey = btn.dataset.key;
+      appState.selectedFilters = {};
+      appState.searchTerms = {};
+      renderAll();
+    });
+  });
+
+  // 筛选事件
+  panel.querySelectorAll('.filter-option input').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const key = cb.dataset.key;
+      const val = cb.value;
+      if (!appState.selectedFilters[key]) appState.selectedFilters[key] = new Set();
+      if (cb.checked) appState.selectedFilters[key].add(val);
+      else appState.selectedFilters[key].delete(val);
+      renderResults();
+    });
+  });
+
+  // 搜索事件
+  panel.querySelectorAll('.filter-search').forEach(input => {
+    input.addEventListener('input', () => {
+      appState.searchTerms[input.dataset.key] = input.value;
+      renderFilters(); // 重新渲染当前列选项
+    });
+  });
+
+  // 重置列事件
+  panel.querySelectorAll('.filter-title .reset').forEach(btn => {
+    btn.addEventListener('click', () => {
+      delete appState.selectedFilters[btn.dataset.key];
+      renderAll();
+    });
+  });
+}
+
+function getFilterOptions(filterKey) {
+  const currentKind = getCurrentKind();
+  const products = appState.products.filter(p => p.category === appState.currentCategoryId && p.kind === appState.currentKindKey);
+  const values = new Set();
+  products.forEach(p => {
+    const v = p.spec_data?.[filterKey];
+    if (v !== undefined && v !== null && v !== '') values.add(String(v));
+  });
+  return Array.from(values).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+}
+
+function renderResults() {
+  const panel = document.getElementById('results');
+  const currentKind = getCurrentKind();
+  if (!currentKind) {
+    panel.innerHTML = '<div class="empty-state">暂无产品数据</div>';
+    return;
+  }
+
+  let products = appState.products.filter(p =>
+    p.category === appState.currentCategoryId && p.kind === appState.currentKindKey
+  );
+
+  // 应用筛选
+  Object.keys(appState.selectedFilters).forEach(key => {
+    const selected = appState.selectedFilters[key];
+    if (selected && selected.size) {
+      products = products.filter(p => {
+        const v = p.spec_data?.[key];
+        return v !== undefined && selected.has(String(v));
+      });
+    }
+  });
+
+  const count = products.length;
+  let html = `
+    <div class="results-bar">
+      <div class="results-count">共 <strong>${count}</strong> 个型号匹配</div>
+      <div class="clear-all" id="clearAll">清空全部筛选</div>
+    </div>
+  `;
+
+  if (count === 0) {
+    html += `<div class="empty-state">没有符合条件的型号，请调整筛选条件</div>`;
+  } else {
+    html += `<div style="overflow-x:auto;"><table class="results-table"><thead><tr>`;
+    html += `<th>图片</th><th>型号</th><th>制造商</th>`;
+    currentKind.filters.forEach(f => {
+      html += `<th>${escapeHtml(f.name)}</th>`;
+    });
+    html += `<th>参考价格</th><th>数据手册</th><th>备注</th></tr></thead><tbody>`;
+
+    products.forEach(p => {
+      html += `<tr>`;
+      if (p.image_url) {
+        html += `<td><img class="prod-img-thumb" src="${escapeHtml(p.image_url)}" alt="" onclick="openLightbox('${escapeHtml(p.image_url)}')"></td>`;
+      } else {
+        html += `<td><div class="prod-img-placeholder">暂无</div></td>`;
+      }
+      html += `<td class="model">${escapeHtml(p.model)}</td><td>${escapeHtml(p.manufacturer)}</td>`;
+      currentKind.filters.forEach(f => {
+        const v = p.spec_data?.[f.key] || '-';
+        html += `<td>${escapeHtml(v)}</td>`;
+      });
+      html += `<td class="price">¥${escapeHtml(p.price || '-')}</td>`;
+      if (p.datasheet_url) {
+        html += `<td><a class="datasheet-link" href="${escapeHtml(p.datasheet_url)}" target="_blank">📄 数据手册</a></td>`;
+      } else {
+        html += `<td class="no-datasheet">暂无</td>`;
+      }
+      html += `<td class="remarks-cell">${escapeHtml(p.remarks || '-')}</td>`;
+      html += `</tr>`;
+    });
+    html += `</tbody></table></div>`;
+  }
+
+  panel.innerHTML = html;
+  document.getElementById('clearAll').addEventListener('click', () => {
+    appState.selectedFilters = {};
+    appState.searchTerms = {};
+    renderAll();
+  });
+}
+
+
+function openLightbox(url) {
+  const overlay = document.createElement('div');
+  overlay.className = 'lightbox-overlay';
+  overlay.innerHTML = `<img src="${escapeHtml(url)}" alt="产品图片">`;
+  overlay.addEventListener('click', () => overlay.remove());
+  document.body.appendChild(overlay);
+}
+function escapeHtml(text) {
+  if (text === null || text === undefined) return '';
+  const div = document.createElement('div');
+  div.textContent = String(text);
+  return div.innerHTML;
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+</script>
+</body>
+</html>
