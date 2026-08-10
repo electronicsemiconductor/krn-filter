@@ -1,0 +1,1258 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KRN科瑞诺参数筛选器 - 后台管理</title>
+  <script src="./supabase.min.js" onerror="window.__supabaseLoadFailed=true;"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #f5f7fa;
+      color: #333;
+      line-height: 1.5;
+    }
+    .wrap { max-width: 1600px; margin: 0 auto; padding: 20px; }
+    header {
+      background: #fff;
+      border-radius: 8px;
+      padding: 20px 24px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header h1 { font-size: 20px; color: #1a1a1a; }
+    header p { color: #666; font-size: 13px; margin-top: 4px; }
+    .btn {
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: #1890ff; color: #fff; }
+    .btn-primary:hover { background: #40a9ff; }
+    .btn-danger { background: #ff4d4f; color: #fff; }
+    .btn-danger:hover { background: #ff7875; }
+    .btn-default { background: #fff; border: 1px solid #d9d9d9; color: #555; }
+    .btn-default:hover { border-color: #1890ff; color: #1890ff; }
+    .cat-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      background: #fff;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .cat-btn {
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: 1px solid #e0e0e0;
+      background: #fff;
+      color: #555;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .cat-btn:hover { border-color: #1890ff; color: #1890ff; }
+    .cat-btn.active { background: #1890ff; color: #fff; border-color: #1890ff; }
+    .panel {
+      background: #fff;
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .kind-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #eee;
+    }
+    .kind-btn {
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1px solid #d9d9d9;
+      background: #fff;
+      color: #555;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .kind-btn:hover { border-color: #1890ff; color: #1890ff; }
+    .kind-btn.active { background: #1890ff; color: #fff; border-color: #1890ff; }
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    th, td {
+      padding: 10px 8px;
+      text-align: left;
+      border-bottom: 1px solid #f0f0f0;
+      white-space: nowrap;
+    }
+    th {
+      background: #fafafa;
+      font-weight: 600;
+    }
+    tr:hover td { background: #f6fbff; }
+    .actions button { margin-right: 6px; padding: 4px 10px; font-size: 12px; }
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 20px;
+    }
+    .modal {
+      background: #fff;
+      border-radius: 8px;
+      width: 100%;
+      max-width: 700px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    }
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-header h3 { font-size: 16px; }
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      color: #999;
+    }
+    .modal-body { padding: 20px; }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .form-group { display: flex; flex-direction: column; }
+    .form-group.full { grid-column: 1 / -1; }
+    .form-group label {
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+    .form-group input, .form-group textarea, .form-group select {
+      padding: 8px 10px;
+      border: 1px solid #d9d9d9;
+      border-radius: 4px;
+      font-size: 14px;
+      outline: none;
+    }
+    .form-group input:focus, .form-group textarea:focus, .form-group select:focus { border-color: #1890ff; }
+    .form-group textarea { resize: vertical; min-height: 60px; }
+    .modal-footer {
+      padding: 12px 20px;
+      border-top: 1px solid #eee;
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+    .login-box {
+      max-width: 400px;
+      margin: 80px auto;
+      background: #fff;
+      border-radius: 8px;
+      padding: 32px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+    }
+    .login-box h2 { margin-bottom: 20px; text-align: center; }
+    .login-box input {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 16px;
+      border: 1px solid #d9d9d9;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .login-box button { width: 100%; padding: 10px; }
+    .error-msg { color: #ff4d4f; font-size: 13px; margin-bottom: 12px; }
+    .success-msg { color: #52c41a; font-size: 13px; margin-bottom: 12px; }
+    .status-tip { padding: 10px 14px; border-radius: 6px; margin-bottom: 16px; font-size: 13px; }
+    .status-tip.error { background: #fff2f0; border: 1px solid #ffccc7; color: #cf1322; }
+    .status-tip.success { background: #f6ffed; border: 1px solid #b7eb8f; color: #389e0d; }
+    .empty-state { text-align: center; padding: 40px; color: #999; }
+    .loading { text-align: center; padding: 40px; color: #666; }
+
+    .prod-img-preview {
+      width: 40px;
+      height: 40px;
+      object-fit: contain;
+      border: 1px solid #eee;
+      border-radius: 4px;
+      background: #fff;
+    }
+    .upload-area {
+      border: 2px dashed #d9d9d9;
+      border-radius: 8px;
+      padding: 24px;
+      text-align: center;
+      color: #666;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 16px;
+    }
+    .upload-area:hover { border-color: #1890ff; background: #f6fbff; }
+    .upload-area.dragover { border-color: #1890ff; background: #e6f7ff; }
+    .upload-hint { font-size: 13px; margin-top: 8px; color: #999; }
+    .bulk-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .parse-preview {
+      max-height: 300px;
+      overflow: auto;
+      border: 1px solid #eee;
+      border-radius: 4px;
+      margin-top: 12px;
+    }
+    .parse-preview table { font-size: 12px; }
+    .parse-preview th, .parse-preview td { padding: 6px; }
+    @media (max-width: 768px) {
+      .form-row { grid-template-columns: 1fr; }
+      .toolbar { flex-direction: column; align-items: flex-start; gap: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+<script>
+// ==================== 配置 ====================
+const SUPABASE_URL = 'https://xbevlbuhrnzmtfmseqsj.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_hclTTu_Tn46Z8l3FG2U9mQ_jSXr7wl-';
+const ADMIN_PASSWORD = 'krn2024';
+// 注意:不能叫 supabase,因为 SDK 顶层已 var supabase = (function(){})() 声明
+// 否则会触发 SyntaxError: Identifier 'supabase' has already been declared
+let _supabaseClient = null;
+
+function initSupabaseClient() {
+  if (_supabaseClient) return true;
+  if (window.__supabaseLoadFailed) return false;
+  if (window.supabase && window.supabase.createClient) {
+    try {
+      _supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      return true;
+    } catch (e) {
+      console.error('createClient 失败:', e);
+      return false;
+    }
+  }
+  return false;
+}
+// 立刻尝试一次（同步加载场景下此时 SDK 已就绪）
+initSupabaseClient();
+
+// ==================== 内嵌 Fallback 数据 ====================
+const FALLBACK_DATA = {
+  categories: [
+    {
+      id: 'power', name: '电源管理', display_name: '电源管理',
+      kinds_config: {
+        kinds: [
+          { key: 'ldo', name: '线性稳压器(LDO)', filters: [
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'vin', name:'输入耐压(V)', type:'checkbox'},
+            {key:'iout', name:'工作电流(Max)', type:'checkbox'},
+            {key:'vout', name:'输出电压(V)', type:'checkbox'},
+            {key:'iq', name:'静态功耗(μA)', type:'checkbox'},
+            {key:'psrr', name:'纹波抑制比（1K Hz）', type:'checkbox'}
+          ]},
+          { key: 'three_term', name: '三端稳压器', filters: [
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'iout', name:'输出电流(Max)', type:'checkbox'},
+            {key:'vin', name:'工作电压(V)', type:'checkbox'},
+            {key:'vout', name:'输出电压(V)', type:'checkbox'},
+            {key:'iq', name:'静态功耗(μA)', type:'checkbox'},
+            {key:'psrr', name:'纹波抑制比（1K Hz）', type:'checkbox'}
+          ]},
+          { key: 'buck', name: '降压IC', filters: [
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'freq', name:'开关频率', type:'checkbox'},
+            {key:'vref', name:'基准电压(V)', type:'checkbox'},
+            {key:'iout', name:'输出电流(Max)', type:'checkbox'},
+            {key:'vin', name:'输入电压', type:'checkbox'},
+            {key:'vout', name:'输出电压(V)', type:'checkbox'}
+          ]},
+          { key: 'boost', name: '升压IC', filters: [
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'freq', name:'开关频率', type:'checkbox'},
+            {key:'vref', name:'基准电压(V)', type:'checkbox'},
+            {key:'eff', name:'工作效率', type:'checkbox'},
+            {key:'ilim', name:'开关电流限制(LIM)', type:'checkbox'},
+            {key:'vin', name:'输入电压', type:'checkbox'},
+            {key:'vout', name:'输出电压(V)', type:'checkbox'}
+          ]},
+          { key: 'battery', name: '电池管理', filters: [
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'ichg', name:'充电电流(Max)', type:'checkbox'},
+            {key:'vacc', name:'输出电压精度', type:'checkbox'},
+            {key:'anti_rev', name:'电池防反接', type:'checkbox'},
+            {key:'vin', name:'工作电压(V)', type:'checkbox'},
+            {key:'iq', name:'静态功耗(μA)', type:'checkbox'}
+          ]},
+          { key: 'reset', name: '复位芯片', filters: [
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'delay', name:'延迟', type:'checkbox'},
+            {key:'vreset', name:'复位值电压', type:'checkbox'},
+            {key:'acc', name:'检测精度', type:'checkbox'},
+            {key:'vin', name:'工作电压(V)', type:'checkbox'},
+            {key:'iq', name:'静态功耗(μA)', type:'checkbox'}
+          ]},
+          { key: 'vref', name: '基准芯片', filters: [
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'vref', name:'基准电压(V)', type:'checkbox'},
+            {key:'vacc', name:'输出电压精度', type:'checkbox'},
+            {key:'acc', name:'检测精度', type:'checkbox'},
+            {key:'iout', name:'输出电流(Max)', type:'checkbox'},
+            {key:'vin', name:'输入耐压(V)', type:'checkbox'},
+            {key:'vout', name:'输出电压(V)', type:'checkbox'}
+          ]},
+          { key: 'current_sense', name: '电流感应放大器', filters: [
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'acc', name:'检测精度', type:'checkbox'},
+            {key:'vin', name:'输入电压', type:'checkbox'},
+            {key:'iq', name:'静态功耗(μA)', type:'checkbox'}
+          ]},
+          { key: 'gate_driver', name: '栅极驱动芯片', filters: [
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'iout', name:'输出电流(Max)', type:'checkbox'},
+            {key:'vin', name:'输入电压', type:'checkbox'},
+            {key:'iq', name:'静态功耗(μA)', type:'checkbox'}
+          ]}
+        ]
+      }
+    },
+    {
+      id: 'esd', name: 'ESD静电保护管', display_name: 'ESD静电保护管',
+      kinds_config: {
+        kinds: [
+          { key: 'esd', name: 'ESD静电保护', filters: [
+            {key:'sub_kind', name:'种类', type:'checkbox'},
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'vrwm', name:'VRWM(V)', type:'checkbox'},
+            {key:'channel', name:'Channel', type:'checkbox'},
+            {key:'cj', name:'Cj(pF)', type:'checkbox'},
+            {key:'ipp', name:'IPP(A)', type:'checkbox'}
+          ]},
+          { key: 'polymer', name: '高分子', filters: [
+            {key:'ipp', name:'IPP(A)', type:'checkbox'},
+            {key:'channel', name:'Channel', type:'checkbox'},
+            {key:'vrwm', name:'VRWM(V)', type:'checkbox'},
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'cj', name:'Cj(pF)', type:'checkbox'}
+          ]}
+        ]
+      }
+    },
+    {
+      id: 'gdt', name: '气体放电管', display_name: '气体放电管',
+      kinds_config: {
+        kinds: [
+          { key: 'tss', name: '半导体放电管', filters: [
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'vsmax', name:'Vs(max)', type:'checkbox'},
+            {key:'is', name:'Is', type:'checkbox'},
+            {key:'id_vd', name:'Id@Vd(max)', type:'checkbox'},
+            {key:'vd', name:'Vd', type:'checkbox'},
+            {key:'co', name:'Co*(typ)', type:'checkbox'},
+            {key:'ih', name:'Ih(min)', type:'checkbox'}
+          ]},
+          { key: 'ceramic', name: '陶瓷气体放电管', filters: [
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'vsmax', name:'Vs(max)', type:'checkbox'},
+            {key:'kv_us', name:'@1KV/μs', type:'checkbox'},
+            {key:'gohm', name:'1 GΩ', type:'checkbox'},
+            {key:'mhz_pf', name:'@1MHz(pF)', type:'checkbox'},
+            {key:'times_20us', name:'@8/20μs ±5 times', type:'checkbox'}
+          ]}
+        ]
+      }
+    },
+    {
+      id: 'bjt', name: '通用二三极管', display_name: '通用二三极管',
+      kinds_config: {
+        kinds: [
+          { key: 'schottky', name: '肖特基二极管', filters: [
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'vr', name:'VR(V)', type:'checkbox'},
+            {key:'if', name:'If(A)', type:'checkbox'},
+            {key:'vf', name:'VF(V)', type:'checkbox'},
+            {key:'ifsm', name:'Ifsm(A)', type:'checkbox'},
+            {key:'ir', name:'IR(uA)max.', type:'checkbox'}
+          ]},
+          { key: 'fast_recovery', name: '快恢复二极管', filters: [
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'if', name:'If(A)', type:'checkbox'},
+            {key:'vf', name:'VF(V)', type:'checkbox'},
+            {key:'ifsm', name:'Ifsm(A)', type:'checkbox'},
+            {key:'vr_min', name:'VR(V)Min.', type:'checkbox'}
+          ]},
+          { key: 'switching', name: '开关二极管', filters: [
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'vf', name:'VF(V)', type:'checkbox'},
+            {key:'ptot', name:'Ptot(W)', type:'checkbox'},
+            {key:'io', name:'IO(mA)', type:'checkbox'},
+            {key:'vr_min', name:'VR(V)Min.', type:'checkbox'},
+            {key:'ir_vr', name:'IR@VR(V)', type:'checkbox'}
+          ]},
+          { key: 'zener', name: '稳压二极管', filters: [
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'vzt', name:'VZT(V)typ', type:'checkbox'},
+            {key:'izt', name:'IZT(mA)', type:'checkbox'},
+            {key:'zzt', name:'ZZT(Ω)', type:'checkbox'},
+            {key:'zzk', name:'ZZK(Ω)', type:'checkbox'},
+            {key:'izk', name:'IZK(mA)', type:'checkbox'}
+          ]},
+          { key: 'general_diode', name: '通用二极管', filters: [
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'if', name:'If(A)', type:'checkbox'},
+            {key:'vf', name:'VF(V)', type:'checkbox'},
+            {key:'vr_min', name:'VR(V)Min.', type:'checkbox'}
+          ]},
+          { key: 'transistor', name: '通用三极管', filters: [
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'type', name:'Type', type:'checkbox'},
+            {key:'vcbo', name:'VCBO(V)', type:'checkbox'},
+            {key:'vceo', name:'VCEO(V)', type:'checkbox'},
+            {key:'ic', name:'IC(A)', type:'checkbox'},
+            {key:'hfe_min', name:'hFE(Min.)', type:'checkbox'},
+            {key:'hfe_max', name:'hFE(Max.)', type:'checkbox'}
+          ]},
+          { key: 'digital_transistor', name: '数字晶体管', filters: [
+            {key:'type', name:'Type', type:'checkbox'},
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'vcc', name:'VCC(A)', type:'checkbox'},
+            {key:'io', name:'IO(mA)', type:'checkbox'},
+            {key:'vo_on', name:'VO(on)', type:'checkbox'},
+            {key:'r1', name:'R1', type:'checkbox'},
+            {key:'r2', name:'R2', type:'checkbox'}
+          ]}
+        ]
+      }
+    },
+    {
+      id: 'opamp', name: '运算放大器及比较器', display_name: '运算放大器及比较器',
+      kinds_config: {
+        kinds: [
+          { key: 'opamp', name: '运算放大器', filters: [
+            {key:'power_supply', name:'Power supply', type:'checkbox'},
+            {key:'rail_to_rail', name:'Rail to Rail', type:'checkbox'},
+            {key:'gbw', name:'GBW', type:'checkbox'},
+            {key:'iq', name:'IQ', type:'checkbox'},
+            {key:'input_bias', name:'Input Bias Current', type:'checkbox'},
+            {key:'package', name:'Package', type:'checkbox'}
+          ]},
+          { key: 'comparator', name: '比较器', filters: [
+            {key:'power_supply', name:'Power supply', type:'checkbox'},
+            {key:'rail_to_rail', name:'Rail to Rail', type:'checkbox'},
+            {key:'channel', name:'Channel', type:'checkbox'},
+            {key:'iq', name:'IQ', type:'checkbox'},
+            {key:'max_vos', name:'Maxmum Vos', type:'checkbox'},
+            {key:'package', name:'Package', type:'checkbox'}
+          ]}
+        ]
+      }
+    },
+    {
+      id: 'mos', name: '场效应管（MOS管）', display_name: '场效应管（MOS管）',
+      kinds_config: {
+        kinds: [
+          { key: 'default', name: 'MOS管', filters: [
+            {key:'kind', name:'种类', type:'checkbox'},
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'with_esd', name:'With ESD', type:'checkbox'},
+            {key:'vds', name:'Vds(V)', type:'checkbox'},
+            {key:'vgs', name:'Vgs(±V)', type:'checkbox'},
+            {key:'id', name:'Id(A)', type:'checkbox'},
+            {key:'vgs_th', name:'VGS(th)V Typ', type:'checkbox'},
+            {key:'rds_on', name:'Rds(on) 10V', type:'checkbox'}
+          ]}
+        ]
+      }
+    },
+    {
+      id: 'tvs', name: '瞬态抑制二极管', display_name: '瞬态抑制二极管',
+      kinds_config: {
+        kinds: [
+          { key: 'default', name: 'TVS', filters: [
+            {key:'kind', name:'种类', type:'checkbox'},
+            {key:'package', name:'Package', type:'checkbox'},
+            {key:'uni_bi', name:'UNI/BI', type:'checkbox'},
+            {key:'vrwm', name:'Vrwm(V)', type:'checkbox'},
+            {key:'pppm', name:'PPPM(W)', type:'checkbox'},
+            {key:'vbr_min', name:'Vbr(V)min', type:'checkbox'},
+            {key:'vbr_max', name:'Vbr(V)Max', type:'checkbox'},
+            {key:'ir', name:'Ir(uA)', type:'checkbox'}
+          ]}
+        ]
+      }
+    },
+    {
+      id: 'switch_interface', name: '开关芯片及接口芯片', display_name: '开关芯片及接口芯片',
+      kinds_config: {
+        kinds: [
+          { key: 'default', name: '开关芯片及接口芯片', filters: [
+            {key:'kind', name:'种类', type:'checkbox'},
+            {key:'package', name:'Package', type:'checkbox'}
+          ]}
+        ]
+      }
+    },
+    {
+      id: 'sensor', name: '传感器', display_name: '传感器',
+      kinds_config: {
+        kinds: [
+          { key: 'ambient_light', name: '环境光传感器', filters: [
+            {key:'vceo', name:'VCEO(V)', type:'checkbox'},
+            {key:'lambda_p', name:'λp(nm)', type:'checkbox'},
+            {key:'tr', name:'tr(S)', type:'checkbox'},
+            {key:'pc', name:'PC(W)', type:'checkbox'},
+            {key:'topr', name:'Topr(℃)', type:'checkbox'},
+            {key:'package', name:'Package', type:'checkbox'}
+          ]},
+          { key: 'current', name: '电流传感器', filters: [
+            {key:'vcc', name:'Vcc(V)', type:'checkbox'},
+            {key:'icc', name:'Icc(A)', type:'checkbox'},
+            {key:'ip', name:'Ip(A)', type:'checkbox'},
+            {key:'sens', name:'Sens(mV/A)', type:'checkbox'},
+            {key:'ta', name:'TA(℃)', type:'checkbox'},
+            {key:'package', name:'Package', type:'checkbox'}
+          ]},
+          { key: 'fiber_laser', name: '光纤/激光传感器', filters: [
+            {key:'vcc', name:'Vcc(V)', type:'checkbox'},
+            {key:'lsb0', name:'LSB0(ps)', type:'checkbox'},
+            {key:'lsb1', name:'LSB1(ps)', type:'checkbox'},
+            {key:'tm', name:'tm(S)', type:'checkbox'},
+            {key:'ta', name:'Ta(℃)', type:'checkbox'},
+            {key:'package', name:'Package', type:'checkbox'}
+          ]},
+          { key: 'hall', name: '霍尔传感器', filters: [
+            {key:'polarity', name:'Polarity', type:'checkbox'},
+            {key:'vdd', name:'VDD(V)', type:'checkbox'},
+            {key:'idd', name:'IDD(A)', type:'checkbox'},
+            {key:'scanning_freq', name:'Scanning frequency', type:'checkbox'},
+            {key:'package', name:'Package', type:'checkbox'}
+          ]},
+          { key: 'temperature', name: '温度传感器', filters: [
+            {key:'polarity', name:'Polarity', type:'checkbox'},
+            {key:'vdd', name:'VDD(V)', type:'checkbox'},
+            {key:'idd', name:'IDD(A)', type:'checkbox'},
+            {key:'scanning_freq', name:'Scanning frequency', type:'checkbox'},
+            {key:'package', name:'Package', type:'checkbox'}
+          ]}
+        ]
+      }
+    },
+    {
+      id: 'optoelectronics', name: '光电器件', display_name: '光电器件',
+      kinds_config: {
+        kinds: [
+          { key: 'optocoupler', name: '光耦', filters: [
+            {key:'output_type', name:'输出类型', type:'checkbox'},
+            {key:'vceo', name:'VCEO(V)', type:'checkbox'},
+            {key:'ic_itsm', name:'IC/ITSM(A)', type:'checkbox'},
+            {key:'vr', name:'VR(V)', type:'checkbox'},
+            {key:'if', name:'IF(A)', type:'checkbox'},
+            {key:'package', name:'Package', type:'checkbox'}
+          ]},
+          { key: 'photodiode', name: '光电二极管', filters: [
+            {key:'vr', name:'VR(V)', type:'checkbox'},
+            {key:'id', name:'ID(nA)', type:'checkbox'},
+            {key:'topr', name:'Topr(℃)', type:'checkbox'},
+            {key:'lambda', name:'λ(nm)', type:'checkbox'},
+            {key:'package', name:'Package', type:'checkbox'}
+          ]}
+        ]
+      }
+    }
+  ],
+  products: [
+    {category:'power', kind:'ldo', model:'XC6206P332MR', manufacturer:'TOREX', spec_data:{package:'SOT-23', vin:'6V', iout:'200mA', vout:'3.3V', iq:'1.0μA', psrr:'50dB'}, price:'0.12', datasheet_url:'', image_url:'', remarks:''},
+    {category:'power', kind:'ldo', model:'AMS1117-3.3', manufacturer:'AMS', spec_data:{package:'SOT-223', vin:'15V', iout:'1A', vout:'3.3V', iq:'5mA', psrr:'60dB'}, price:'0.25', datasheet_url:'', image_url:'', remarks:''},
+    {category:'power', kind:'three_term', model:'LM7805CT', manufacturer:'TI', spec_data:{package:'TO-220', iout:'1.5A', vin:'25V', vout:'5V', iq:'8mA', psrr:'62dB'}, price:'0.58', datasheet_url:'', image_url:'', remarks:''},
+    {category:'power', kind:'buck', model:'MP1584EN', manufacturer:'MPS', spec_data:{package:'SOP-8', freq:'1.5MHz', vref:'0.8V', iout:'3A', vin:'4.5V-28V', vout:'0.8V-24V'}, price:'1.20', datasheet_url:'', image_url:'', remarks:''},
+    {category:'power', kind:'boost', model:'MT3608', manufacturer:'MicrOne', spec_data:{package:'SOT-23-6', freq:'1.2MHz', vref:'0.6V', eff:'93%', ilim:'2A', vin:'2V-24V', vout:'5V-28V'}, price:'0.35', datasheet_url:'', image_url:'', remarks:''},
+    {category:'power', kind:'battery', model:'TP4056', manufacturer:'拓微', spec_data:{package:'SOP-8', ichg:'1A', vacc:'1.5%', anti_rev:'有', vin:'4V-8V', iq:'80μA'}, price:'0.85', datasheet_url:'', image_url:'', remarks:''},
+    {category:'power', kind:'reset', model:'IMP811', manufacturer:'IMP', spec_data:{package:'SOT-143', delay:'240ms', vreset:'3.08V', acc:'1.5%', vin:'1.1V-5.5V', iq:'5μA'}, price:'0.42', datasheet_url:'', image_url:'', remarks:''},
+    {category:'power', kind:'vref', model:'TL431', manufacturer:'TI', spec_data:{package:'SOT-23', vref:'2.5V', vacc:'1%', acc:'0.5%', iout:'100mA', vin:'36V', vout:'2.5V-36V'}, price:'0.18', datasheet_url:'', image_url:'', remarks:''},
+    {category:'power', kind:'current_sense', model:'INA199A1', manufacturer:'TI', spec_data:{package:'SOT-23-6', acc:'1.5%', vin:'2.7V-26V', iq:'100μA'}, price:'0.95', datasheet_url:'', image_url:'', remarks:''},
+    {category:'power', kind:'gate_driver', model:'IR2104', manufacturer:'Infineon', spec_data:{package:'SOP-8', iout:'130mA/270mA', vin:'10V-20V', iq:'30μA'}, price:'1.10', datasheet_url:'', image_url:'', remarks:''},
+    {category:'esd', kind:'esd', model:'ESD9B3.3T5G', manufacturer:'ON Semiconductor', spec_data:{sub_kind:'低电容ESD静电防护', package:'SOD-523', vrwm:'3.3V', channel:'1-Line', cj:'0.5', ipp:'2.0'}, price:'0.038', datasheet_url:'', image_url:'', remarks:''},
+    {category:'esd', kind:'polymer', model:'PESD1206-240', manufacturer:'Littelfuse', spec_data:{ipp:'5.0', channel:'2-Line', vrwm:'24V', package:'1206', cj:'0.5'}, price:'0.65', datasheet_url:'', image_url:'', remarks:''},
+    {category:'gdt', kind:'tss', model:'P0080SCL', manufacturer:'Littelfuse', spec_data:{package:'DO-214AA', vsmax:'6V', is:'50mA', id_vd:'1A', vd:'4V', co:'50pF', ih:'50mA'}, price:'0.78', datasheet_url:'', image_url:'', remarks:''},
+    {category:'gdt', kind:'ceramic', model:'CG2.5L-TR', manufacturer:'EPCOS', spec_data:{package:'2R5', vsmax:'2.5kV', kv_us:'3kV', gohm:'1', mhz_pf:'1.5', times_20us:'5'}, price:'0.32', datasheet_url:'', image_url:'', remarks:''},
+    {category:'bjt', kind:'schottky', model:'SS34', manufacturer:'Vishay', spec_data:{package:'SMA', vr:'40V', if:'3A', vf:'0.5V', ifsm:'100A', ir:'0.5mA'}, price:'0.12', datasheet_url:'', image_url:'', remarks:''},
+    {category:'bjt', kind:'fast_recovery', model:'US1M', manufacturer:'Vishay', spec_data:{package:'SMA', if:'1A', vf:'1.0V', ifsm:'30A', vr_min:'1000V'}, price:'0.08', datasheet_url:'', image_url:'', remarks:''},
+    {category:'bjt', kind:'switching', model:'1N4148W', manufacturer:'Vishay', spec_data:{package:'SOD-123', vf:'1.0V', ptot:'0.5W', io:'150mA', vr_min:'75V', ir_vr:'25nA'}, price:'0.03', datasheet_url:'', image_url:'', remarks:''},
+    {category:'bjt', kind:'zener', model:'BZT52C3V3', manufacturer:'Vishay', spec_data:{package:'SOD-123', vzt:'3.3V', izt:'5mA', zzt:'95Ω', zzk:'600Ω', izk:'0.5mA'}, price:'0.04', datasheet_url:'', image_url:'', remarks:''},
+    {category:'bjt', kind:'general_diode', model:'1N4007', manufacturer:'LGE', spec_data:{package:'DO-41', if:'1A', vf:'1.1V', vr_min:'1000V'}, price:'0.04', datasheet_url:'', image_url:'', remarks:''},
+    {category:'bjt', kind:'transistor', model:'S8050', manufacturer:'LGE', spec_data:{package:'SOT-23', type:'NPN', vcbo:'40V', vceo:'25V', ic:'0.5A', hfe_min:'120', hfe_max:'350'}, price:'0.03', datasheet_url:'', image_url:'', remarks:''},
+    {category:'bjt', kind:'digital_transistor', model:'DTC143Z', manufacturer:'ROHM', spec_data:{type:'NPN', package:'SOT-23', vcc:'50V', io:'0.1A', vo_on:'0.3V', r1:'4.7k', r2:'47k'}, price:'0.05', datasheet_url:'', image_url:'', remarks:''},
+    {category:'opamp', kind:'opamp', model:'LM358', manufacturer:'TI', spec_data:{power_supply:'3V-32V', rail_to_rail:'NO', gbw:'1MHz', iq:'700μA', input_bias:'45nA', package:'SOP-8'}, price:'0.25', datasheet_url:'', image_url:'', remarks:''},
+    {category:'opamp', kind:'comparator', model:'LM393', manufacturer:'TI', spec_data:{power_supply:'2V-36V', rail_to_rail:'NO', channel:'2-Line', iq:'0.8mA', max_vos:'5mV', package:'SOP-8'}, price:'0.15', datasheet_url:'', image_url:'', remarks:''},
+    {category:'mos', kind:'default', model:'AO3400', manufacturer:'AOS', spec_data:{kind:'N-Ch', package:'SOT-23', with_esd:'NO', vds:'30V', vgs:'12V', id:'5.7A', vgs_th:'1.4V', rds_on:'28mΩ'}, price:'0.08', datasheet_url:'', image_url:'', remarks:''},
+    {category:'tvs', kind:'default', model:'SMAJ5.0A', manufacturer:'Littelfuse', spec_data:{kind:'SMAJ', package:'DO-214AC', uni_bi:'UNI', vrwm:'5V', pppm:'400W', vbr_min:'6.4V', vbr_max:'7.07V', ir:'800μA'}, price:'0.12', datasheet_url:'', image_url:'', remarks:''},
+    {category:'switch_interface', kind:'default', model:'SGM3157', manufacturer:'SGMICRO', spec_data:{kind:'模拟开关', package:'SC-70-6'}, price:'0.18', datasheet_url:'', image_url:'', remarks:''},
+    {category:'switch_interface', kind:'default', model:'CH440R', manufacturer:'WCH', spec_data:{kind:'USB功率及负载开关', package:'SOP-8'}, price:'0.65', datasheet_url:'', image_url:'', remarks:''},
+    {category:'switch_interface', kind:'default', model:'SP3485EN', manufacturer:'MaxLinear', spec_data:{kind:'RS-485/RS-422芯片(收发器)', package:'SOP-8'}, price:'0.42', datasheet_url:'', image_url:'', remarks:''},
+    {category:'switch_interface', kind:'default', model:'MAX3232', manufacturer:'TI', spec_data:{kind:'RS232芯片(收发器)', package:'SOP-16'}, price:'0.85', datasheet_url:'', image_url:'', remarks:''},
+    {category:'switch_interface', kind:'default', model:'PE4259', manufacturer:'Peregrine', spec_data:{kind:'射频开关', package:'SOT-23-6'}, price:'0.55', datasheet_url:'', image_url:'', remarks:''},
+    {category:'sensor', kind:'ambient_light', model:'APDS-9960', manufacturer:'Avago', spec_data:{vceo:'30V', lambda_p:'550nm', tr:'15μs', pc:'70mW', topr:'-30℃~85℃', package:'SMD'}, price:'1.20', datasheet_url:'', image_url:'', remarks:''},
+    {category:'sensor', kind:'current', model:'ACS712', manufacturer:'Allegro', spec_data:{vcc:'5V', icc:'11.18mA', ip:'±5A', sens:'400mV/A', ta:'-40℃~150℃', package:'SOP-8'}, price:'1.50', datasheet_url:'', image_url:'', remarks:''},
+    {category:'sensor', kind:'fiber_laser', model:'ADNS-9800', manufacturer:'PixArt', spec_data:{vcc:'2.5V~3.6V', lsb0:'7ps@DOUBLE_RES', lsb1:'37ps@DOUBLE_RES', tm:'3.5ns~2.4μs', ta:'-40℃~125℃', package:'QFN-32'}, price:'3.20', datasheet_url:'', image_url:'', remarks:''},
+    {category:'sensor', kind:'hall', model:'A3144', manufacturer:'Allegro', spec_data:{polarity:'单N极', vdd:'15V', idd:'0.7mA', scanning_freq:'2.5kHz', package:'SOT-23-3L'}, price:'0.35', datasheet_url:'', image_url:'', remarks:''},
+    {category:'sensor', kind:'temperature', model:'DS18B20', manufacturer:'Maxim', spec_data:{polarity:'-', vdd:'3.3V', idd:'1.3mA', scanning_freq:'-', package:'SMD'}, price:'0.95', datasheet_url:'', image_url:'', remarks:''},
+    {category:'optoelectronics', kind:'optocoupler', model:'PC817C', manufacturer:'Sharp', spec_data:{output_type:'光电晶体管输出', vceo:'80V', ic_itsm:'0.05A', vr:'6V', if:'50mA', package:'DIP-4'}, price:'0.08', datasheet_url:'', image_url:'', remarks:''},
+    {category:'optoelectronics', kind:'optocoupler', model:'TLP521-1', manufacturer:'Toshiba', spec_data:{output_type:'光电晶体管输出', vceo:'55V', ic_itsm:'0.05A', vr:'5V', if:'50mA', package:'DIP-4'}, price:'0.12', datasheet_url:'', image_url:'', remarks:''},
+    {category:'optoelectronics', kind:'optocoupler', model:'LTV-817S', manufacturer:'Lite-On', spec_data:{output_type:'光电晶体管输出', vceo:'35V', ic_itsm:'0.05A', vr:'6V', if:'50mA', package:'SOP-4'}, price:'0.10', datasheet_url:'', image_url:'', remarks:''},
+    {category:'optoelectronics', kind:'photodiode', model:'BPW34', manufacturer:'OSRAM', spec_data:{vr:'60V', id:'0.1nA', topr:'-40~100℃', lambda:'400~1100nm', package:'1206'}, price:'0.25', datasheet_url:'', image_url:'', remarks:''},
+    {category:'optoelectronics', kind:'photodiode', model:'PIN-10D', manufacturer:'Hamamatsu', spec_data:{vr:'40V', id:'0.05nA', topr:'-40~85℃', lambda:'400~1100nm', package:'DIP-2'}, price:'1.20', datasheet_url:'', image_url:'', remarks:''}
+  ]
+};
+
+// ==================== 状态 ====================
+let state = {
+  loggedIn: false,
+  categories: FALLBACK_DATA.categories,
+  products: [],
+  currentCategoryId: 'power',
+  currentKindKey: '',
+  loading: true,
+  message: null,
+  messageType: null,
+  modal: null, // { mode: 'add'|'edit', product: object }
+  readOnly: false
+};
+
+// ==================== 初始化 ====================
+function init() {
+  const saved = sessionStorage.getItem('krn_admin_login');
+  if (saved === '1') state.loggedIn = true;
+  render();
+  if (state.loggedIn) loadData();
+}
+
+async function loadData() {
+  state.loading = true;
+  state.readOnly = false;
+  render();
+  // 若 SDK 使用 defer 加载，可能此时 window.supabase 还未就绪，需要等待
+  if (!_supabaseClient) {
+    for (let i = 0; i < 30; i++) { // 最多等 3 秒
+      await new Promise(r => setTimeout(r, 100));
+      if (initSupabaseClient()) break;
+      if (window.__supabaseLoadFailed) break;
+    }
+  }
+  if (!_supabaseClient) {
+    const reason = window.__supabaseLoadFailed ? 'CDN 加载失败' : 'SDK 加载超时';
+    showMessage('Supabase 未就绪（' + reason + '），后台不可用。', 'error');
+    state.loading = false;
+    state.readOnly = true;
+    render();
+    return;
+  }
+  try {
+    const [{ data: cats, error: err1 }, { data: prods, error: err2 }] = await Promise.all([
+      _supabaseClient.from('categories').select('*'),
+      _supabaseClient.from('products').select('*')
+    ]);
+    if (err1) throw err1;
+    if (err2) throw err2;
+    state.categories = cats || [];
+    state.products = prods || [];
+    initCategoryAndKind();
+  } catch (e) {
+    console.error(e);
+    showMessage('数据库连接失败：' + e.message + '，已切换到内嵌示例数据（只读）', 'error');
+    state.categories = FALLBACK_DATA.categories;
+    state.products = FALLBACK_DATA.products;
+    initCategoryAndKind();
+    state.readOnly = true;
+  }
+  state.loading = false;
+  render();
+}
+
+function initCategoryAndKind() {
+  if (!state.categories.length) return;
+  const cat = state.categories.find(c => c.id === state.currentCategoryId) || state.categories[0];
+  state.currentCategoryId = cat.id;
+  const kinds = cat.kinds_config?.kinds || [];
+  state.currentKindKey = kinds.length ? kinds[0].key : '';
+}
+
+function getCategory() {
+  return state.categories.find(c => c.id === state.currentCategoryId) || state.categories[0];
+}
+function getKinds() {
+  return getCategory()?.kinds_config?.kinds || [];
+}
+function getCurrentKind() {
+  return getKinds().find(k => k.key === state.currentKindKey) || getKinds()[0];
+}
+function getFilteredProducts() {
+  return state.products.filter(p => p.category === state.currentCategoryId && p.kind === state.currentKindKey);
+}
+
+function showMessage(text, type) {
+  state.message = text;
+  state.messageType = type;
+  render();
+  setTimeout(() => { state.message = null; render(); }, 4000);
+}
+
+// ==================== 登录 ====================
+function login(password) {
+  // 兼容无参调用(HTML onclick/onkeydown 调用时不传参)
+  if (password === undefined) {
+    const input = document.getElementById('pwd');
+    password = input ? input.value : '';
+  }
+  if (password === ADMIN_PASSWORD) {
+    state.loggedIn = true;
+    sessionStorage.setItem('krn_admin_login', '1');
+    loadData();
+  } else {
+    showMessage('密码错误', 'error');
+    render();
+  }
+}
+function logout() {
+  state.loggedIn = false;
+  sessionStorage.removeItem('krn_admin_login');
+  render();
+}
+
+// ==================== 产品 CRUD ====================
+function openAddModal() {
+  const kind = getCurrentKind();
+  if (!kind) return;
+  state.modal = {
+    mode: 'add',
+    product: {
+      category: state.currentCategoryId,
+      kind: kind.key,
+      model: '',
+      manufacturer: '',
+      price: '',
+      datasheet_url: '',
+      image_url: '',
+      remarks: '',
+      spec_data: {}
+    }
+  };
+  render();
+}
+function openEditModal(product) {
+  state.modal = {
+    mode: 'edit',
+    product: { ...product, spec_data: { ...product.spec_data } }
+  };
+  render();
+}
+function closeModal() {
+  state.modal = null;
+  render();
+}
+function updateSpecField(key, value) {
+  state.modal.product.spec_data[key] = value;
+  render();
+}
+function updateProductField(key, value) {
+  state.modal.product[key] = value;
+  render();
+}
+async function saveProduct() {
+  const p = state.modal.product;
+  if (!p.model || !p.manufacturer) {
+    showMessage('型号和制造商为必填项', 'error');
+    return;
+  }
+  if (state.readOnly || !_supabaseClient) {
+    showMessage('当前为只读模式，无法保存', 'error');
+    return;
+  }
+  const payload = {
+    category: p.category,
+    kind: p.kind,
+    model: p.model,
+    manufacturer: p.manufacturer,
+    spec_data: p.spec_data,
+    price: p.price,
+    datasheet_url: p.datasheet_url,
+    image_url: p.image_url,
+    remarks: p.remarks
+  };
+  try {
+    if (state.modal.mode === 'add') {
+      const { error } = await _supabaseClient.from('products').insert(payload);
+      if (error) throw error;
+      showMessage('添加成功', 'success');
+    } else {
+      const { error } = await _supabaseClient.from('products').update(payload).eq('id', p.id);
+      if (error) throw error;
+      showMessage('更新成功', 'success');
+    }
+    state.modal = null;
+    await loadData();
+  } catch (e) {
+    showMessage('保存失败：' + e.message, 'error');
+  }
+}
+async function deleteProduct(id) {
+  if (!confirm('确定删除这条产品？')) return;
+  if (state.readOnly || !_supabaseClient) {
+    showMessage('当前为只读模式，无法删除', 'error');
+    return;
+  }
+  try {
+    const { error } = await _supabaseClient.from('products').delete().eq('id', id);
+    if (error) throw error;
+    showMessage('删除成功', 'success');
+    await loadData();
+  } catch (e) {
+    showMessage('删除失败：' + e.message, 'error');
+  }
+}
+
+
+// ==================== 批量上传 ====================
+function openBulkUploadModal() {
+  state.modal = { mode: 'bulk', rows: null, parsed: [] };
+  render();
+}
+
+function renderBulkUploadModal() {
+  const m = state.modal;
+  const kind = getCurrentKind();
+  return `
+    <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
+      <div class="modal" style="max-width:900px;">
+        <div class="modal-header">
+          <h3>表格批量上传 - ${escapeHtml(kind.name)}</h3>
+          <button class="modal-close" onclick="closeModal()">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="upload-area" id="bulkUploadArea" onclick="document.getElementById('bulkFileInput').click()">
+            <div>点击选择 CSV/Excel 文件，或拖拽文件到此处</div>
+            <div class="upload-hint">支持 .csv / .xlsx / .xls，文件大小建议不超过 2MB</div>
+            <input type="file" id="bulkFileInput" style="display:none" accept=".csv,.xlsx,.xls" onchange="handleBulkFile(this.files[0])">
+          </div>
+          <div id="bulkParseResult"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-default" onclick="closeModal()">取消</button>
+          <button class="btn btn-primary" id="bulkConfirmBtn" onclick="confirmBulkUpload()" disabled>确认上传</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function handleBulkFile(file) {
+  if (!file) return;
+  const area = document.getElementById('bulkUploadArea');
+  const resultEl = document.getElementById('bulkParseResult');
+  const confirmBtn = document.getElementById('bulkConfirmBtn');
+  area.innerHTML = `<div>已选择：${escapeHtml(file.name)}</div><div class="upload-hint">正在解析...</div>`;
+  try {
+    let text;
+    if (file.name.toLowerCase().endsWith('.csv')) {
+      text = await file.text();
+    } else {
+      throw new Error('目前仅支持 .csv 文件，请将 Excel 另存为 CSV(UTF-8) 后上传');
+    }
+    const rows = parseCsv(text);
+    if (!rows.length) throw new Error('文件为空或解析失败');
+    state.modal.parsed = rows;
+    state.modal.fileName = file.name;
+    resultEl.innerHTML = renderParsePreview(rows);
+    confirmBtn.disabled = false;
+    area.innerHTML = `<div>已选择：${escapeHtml(file.name)}</div><div class="upload-hint">共解析 ${rows.length} 行数据</div>`;
+  } catch (e) {
+    area.innerHTML = `<div style="color:#ff4d4f">解析失败：${escapeHtml(e.message)}</div><div class="upload-hint">点击重新选择文件</div>`;
+    resultEl.innerHTML = '';
+    confirmBtn.disabled = true;
+  }
+}
+
+function parseCsv(text) {
+  // Simple CSV parser handling quoted fields
+  const lines = text.replace(/\r/g, '').split('\n').filter(l => l.trim());
+  if (lines.length < 2) return [];
+  const headers = parseCsvLine(lines[0]).map(h => h.trim());
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cols = parseCsvLine(lines[i]);
+    if (cols.length < 2) continue;
+    const row = {};
+    headers.forEach((h, idx) => { row[h] = (cols[idx] || '').trim(); });
+    rows.push(row);
+  }
+  return rows;
+}
+
+function parseCsvLine(line) {
+  const cols = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (line[i + 1] === '"') { current += '"'; i++; }
+        else { inQuotes = false; }
+      } else { current += c; }
+    } else {
+      if (c === '"') { inQuotes = true; }
+      else if (c === ',') { cols.push(current); current = ''; }
+      else { current += c; }
+    }
+  }
+  cols.push(current);
+  return cols;
+}
+
+function renderParsePreview(rows) {
+  if (!rows.length) return '';
+  const keys = Object.keys(rows[0]);
+  return `
+    <div style="margin-bottom:8px;font-size:13px;color:#666;">解析预览（前5行）：</div>
+    <div class="parse-preview">
+      <table>
+        <thead><tr>${keys.map(k => `<th>${escapeHtml(k)}</th>`).join('')}</tr></thead>
+        <tbody>
+          ${rows.slice(0, 5).map(r => `<tr>${keys.map(k => `<td>${escapeHtml(r[k])}</td>`).join('')}</tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function normalizeHeader(h) {
+  return h.replace(/\s+/g, '').replace(/[()（）\[\]]/g, '').toLowerCase();
+}
+
+function getKindFieldMap() {
+  const kind = getCurrentKind();
+  const map = {
+    '型号': 'model',
+    '制造商': 'manufacturer',
+    '参考价格': 'price',
+    '数据手册链接': 'datasheet_url',
+    '图片链接': 'image_url',
+    '备注': 'remarks'
+  };
+  kind.filters.forEach(f => { map[f.name] = f.key; });
+  return map;
+}
+
+function rowToProduct(row, categoryId, kindKey) {
+  const fieldMap = getKindFieldMap();
+  const specKeys = Object.keys(fieldMap).filter(k => !['型号', '制造商', '参考价格', '数据手册链接', '图片链接', '备注'].includes(k));
+  const spec_data = {};
+  specKeys.forEach(headerName => {
+    const key = fieldMap[headerName];
+    // Try exact header first, then normalized
+    let val = row[headerName];
+    if (val === undefined) {
+      const norm = normalizeHeader(headerName);
+      const matched = Object.keys(row).find(h => normalizeHeader(h) === norm);
+      if (matched !== undefined) val = row[matched];
+    }
+    if (val) spec_data[key] = val;
+  });
+  const model = row['型号'] || row[Object.keys(row).find(h => normalizeHeader(h) === '型号')] || '';
+  const manufacturer = row['制造商'] || row[Object.keys(row).find(h => normalizeHeader(h) === '制造商')] || '';
+  return {
+    category: categoryId,
+    kind: kindKey,
+    model: model,
+    manufacturer: manufacturer,
+    spec_data: spec_data,
+    price: row['参考价格'] || row[Object.keys(row).find(h => normalizeHeader(h) === '参考价格')] || '',
+    datasheet_url: row['数据手册链接'] || row[Object.keys(row).find(h => normalizeHeader(h) === '数据手册链接')] || '',
+    image_url: row['图片链接'] || row[Object.keys(row).find(h => normalizeHeader(h).includes('图片'))] || '',
+    remarks: row['备注'] || row[Object.keys(row).find(h => normalizeHeader(h) === '备注')] || ''
+  };
+}
+
+async function confirmBulkUpload() {
+  const rows = state.modal.parsed || [];
+  if (!rows.length) return;
+  if (state.readOnly || !_supabaseClient) {
+    showMessage('当前为只读模式，无法上传', 'error');
+    return;
+  }
+  const products = rows.map(r => rowToProduct(r, state.currentCategoryId, state.currentKindKey)).filter(p => p.model && p.manufacturer);
+  if (!products.length) {
+    showMessage('没有有效的产品数据（型号和制造商为必填）', 'error');
+    return;
+  }
+  try {
+    const { error } = await _supabaseClient.from('products').insert(products);
+    if (error) throw error;
+    showMessage(`成功上传 ${products.length} 条产品`, 'success');
+    state.modal = null;
+    await loadData();
+  } catch (e) {
+    showMessage('批量上传失败：' + e.message, 'error');
+  }
+}
+
+function downloadUploadTemplate() {
+  const kind = getCurrentKind();
+  const headers = ['型号', '制造商', ...kind.filters.map(f => f.name), '参考价格', '数据手册链接', '图片链接', '备注'];
+  const example = headers.map(h => {
+    if (h === '型号') return 'XC6206P332MR';
+    if (h === '制造商') return 'TOREX';
+    if (h === '参考价格') return '0.12';
+    if (h === '数据手册链接') return 'https://example.com/datasheet.pdf';
+    if (h === '图片链接') return 'https://example.com/image.jpg';
+    if (h === '备注') return '现货';
+    return '';
+  });
+  const csv = [headers.join(','), example.join(',')].join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `上传模板_${state.currentCategoryId}_${state.currentKindKey}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(link.href);
+}
+
+// Setup drag and drop for bulk upload area after render
+function bindBulkUploadEvents() {
+  const area = document.getElementById('bulkUploadArea');
+  const input = document.getElementById('bulkFileInput');
+  if (!area) return;
+  area.addEventListener('dragover', e => { e.preventDefault(); area.classList.add('dragover'); });
+  area.addEventListener('dragleave', () => area.classList.remove('dragover'));
+  area.addEventListener('drop', e => {
+    e.preventDefault();
+    area.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file) handleBulkFile(file);
+  });
+}
+
+// ==================== 渲染 ====================
+function render() {
+  const app = document.getElementById('app');
+  if (!state.loggedIn) {
+    app.innerHTML = renderLogin();
+    return;
+  }
+  app.innerHTML = renderAdmin();
+  bindAdminEvents();
+  bindBulkUploadEvents();
+}
+
+function renderLogin() {
+  return `
+    <div class="login-box">
+      <h2>KRN科瑞诺后台管理</h2>
+      ${state.message ? `<div class="error-msg">${state.message}</div>` : ''}
+      <input type="password" id="pwd" placeholder="请输入密码" onkeydown="if(event.key==='Enter') login()">
+      <button class="btn btn-primary" onclick="login()">登录</button>
+    </div>
+  `;
+}
+
+function renderAdmin() {
+  return `
+    <div class="wrap">
+      <header>
+        <div>
+          <h1>KRN科瑞诺参数筛选器 - 后台管理</h1>
+          <p>管理产品型号、制造商、参数与价格</p>
+        </div>
+        <button class="btn btn-default" onclick="logout()">退出登录</button>
+      </header>
+      ${state.message ? `<div class="status-tip ${state.messageType}">${state.message}</div>` : ''}
+      <div class="cat-bar">
+        ${state.categories.map(cat => {
+          const active = cat.id === state.currentCategoryId ? 'active' : '';
+          return `<button class="cat-btn ${active}" data-id="${cat.id}">${cat.display_name}</button>`;
+        }).join('')}
+      </div>
+      <div class="panel">
+        ${state.loading ? '<div class="loading">正在加载数据...</div>' : renderKindPanel()}
+      </div>
+    </div>
+    ${state.modal ? renderModal() : ''}
+  `;
+}
+
+function renderKindPanel() {
+  const kinds = getKinds();
+  const kind = getCurrentKind();
+  if (!kind) return '<div class="empty-state">当前分类没有配置子类型</div>';
+  const products = getFilteredProducts();
+  return `
+    ${kinds.length > 1 ? `
+      <div class="kind-bar">
+        ${kinds.map(k => {
+          const active = k.key === state.currentKindKey ? 'active' : '';
+          return `<button class="kind-btn ${active}" data-key="${k.key}">${k.name}</button>`;
+        }).join('')}
+      </div>
+    ` : ''}
+    <div class="toolbar">
+      <div><strong>${kind.name}</strong>（共 ${products.length} 条）</div>
+      <div class="bulk-actions">
+        <button class="btn btn-default" onclick="downloadUploadTemplate()">📥 下载上传模板</button>
+        <button class="btn btn-default" onclick="openBulkUploadModal()">📤 表格批量上传</button>
+        <button class="btn btn-primary" onclick="openAddModal()">+ 添加型号</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>ID</th><th>图片</th><th>型号</th><th>制造商</th>${kind.filters.map(f => `<th>${escapeHtml(f.name)}</th>`).join('')}<th>参考价格</th><th>数据手册</th><th>备注</th><th>操作</th></tr>
+        </thead>
+        <tbody>
+          ${products.length ? products.map(p => `
+            <tr>
+              <td>${p.id}</td>
+              <td>${p.image_url ? `<img class="prod-img-preview" src="${escapeHtml(p.image_url)}" alt="">` : '-'}</td>
+              <td>${escapeHtml(p.model)}</td>
+              <td>${escapeHtml(p.manufacturer)}</td>
+              ${kind.filters.map(f => `<td>${escapeHtml(p.spec_data?.[f.key] || '-')}</td>`).join('')}
+              <td>${escapeHtml(p.price || '-')}</td>
+              <td>${p.datasheet_url ? `<a href="${escapeHtml(p.datasheet_url)}" target="_blank">链接</a>` : '-'}</td>
+              <td>${escapeHtml(p.remarks || '-')}</td>
+              <td class="actions">
+                <button class="btn btn-primary" onclick="openEditModal(${JSON.stringify(p).replace(/"/g, '&quot;')})">编辑</button>
+                <button class="btn btn-danger" onclick="deleteProduct(${p.id})">删除</button>
+              </td>
+            </tr>
+          `).join('') : `<tr><td colspan="${6 + kind.filters.length}" class="empty-state">该子类型下暂无产品</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderModal() {
+  if (state.modal && state.modal.mode === 'bulk') return renderBulkUploadModal();
+  const p = state.modal.product;
+  const kind = getCurrentKind();
+  const title = state.modal.mode === 'add' ? '添加型号' : '编辑型号';
+  return `
+    <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>${title}</h3>
+          <button class="modal-close" onclick="closeModal()">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label>型号 *</label>
+              <input type="text" value="${escapeHtml(p.model)}" oninput="updateProductField('model', this.value)">
+            </div>
+            <div class="form-group">
+              <label>制造商 *</label>
+              <input type="text" value="${escapeHtml(p.manufacturer)}" oninput="updateProductField('manufacturer', this.value)">
+            </div>
+          </div>
+          <div class="form-row">
+            ${kind.filters.map(f => `
+              <div class="form-group">
+                <label>${escapeHtml(f.name)}</label>
+                <input type="text" value="${escapeHtml(p.spec_data?.[f.key] || '')}" oninput="updateSpecField('${f.key}', this.value)">
+              </div>
+            `).join('')}
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>参考价格</label>
+              <input type="text" value="${escapeHtml(p.price)}" oninput="updateProductField('price', this.value)">
+            </div>
+            <div class="form-group">
+              <label>数据手册链接</label>
+              <input type="text" value="${escapeHtml(p.datasheet_url)}" oninput="updateProductField('datasheet_url', this.value)">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>产品图片链接</label>
+              <input type="text" value="${escapeHtml(p.image_url)}" oninput="updateProductField('image_url', this.value)" placeholder="https://...">
+            </div>
+            <div class="form-group">
+              <label>备注</label>
+              <input type="text" value="${escapeHtml(p.remarks)}" oninput="updateProductField('remarks', this.value)">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-default" onclick="closeModal()">取消</button>
+          <button class="btn btn-primary" onclick="saveProduct()">保存</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function bindAdminEvents() {
+  document.querySelectorAll('.cat-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.currentCategoryId = btn.dataset.id;
+      initCategoryAndKind();
+      render();
+    });
+  });
+  document.querySelectorAll('.kind-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.currentKindKey = btn.dataset.key;
+      render();
+    });
+  });
+}
+
+function escapeHtml(text) {
+  if (text === null || text === undefined) return '';
+  const div = document.createElement('div');
+  div.textContent = String(text);
+  return div.innerHTML;
+}
+
+init();
+</script>
+</body>
+</html>
