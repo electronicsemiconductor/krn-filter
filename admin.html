@@ -790,11 +790,9 @@ function closeModal() {
 }
 function updateSpecField(key, value) {
   state.modal.product.spec_data[key] = value;
-  render();
 }
 function updateProductField(key, value) {
   state.modal.product[key] = value;
-  render();
 }
 async function saveProduct() {
   const p = state.modal.product;
