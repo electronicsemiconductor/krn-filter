@@ -1,0 +1,30 @@
+name: Supabase Keep-Alive
+
+on:
+  schedule:
+    # 每 5 天跑一次（UTC 04:17，落在每月 1/6/11/16/21/26/31 日），留足余量小于 7 天暂停窗口
+    - cron: '17 4 */5 * *'
+  workflow_dispatch: {}
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping all Supabase projects
+        run: |
+          declare -a PROJECTS=(
+            "https://xbevlbuhrnzmtfmseqsj.supabase.co|sb_publishable_hclTTu_Tn46Z8l3FG2U9mQ_jSXr7wl-"
+            "https://jlrfqsxrlmvmeobscgoh.supabase.co|sb_publishable_XhbkwG-rBTVHRVZxxm0Q4g_EhFFnx6v"
+            "https://qlxffqldjzfnmhvtazuo.supabase.co|sb_publishable_v8Izejn2bfY6RUUozBlDvg_MDkan1Pd"
+            "https://xafihsvikmiiauszkstq.supabase.co|sb_publishable_eVwVm1npRqA1k3gFkn4whA_2DD-drVZ"
+            "https://koaifvgkjakaiiodiyyg.supabase.co|sb_publishable_MPzPeNT3vjjLDlAChNqAUg_ehqMT3RQ"
+          )
+          for entry in "${PROJECTS[@]}"; do
+            url="${entry%%|*}"
+            key="${entry##*|}"
+            code=$(curl -s -o /dev/null -w "%{http_code}" \
+              -H "apikey: ${key}" \
+              -H "Authorization: Bearer ${key}" \
+              "${url}/rest/v1/products?select=id&limit=1")
+            echo "$(date -u) ${url} -> HTTP ${code}"
+          done
