@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>KRN科瑞诺参数筛选器 - 后台管理</title>
-  <meta name="version" content="2026-08-13-1530">
+  <meta name="version" content="2026-08-13-2130">
   <script src="./supabase.min.js" onerror="window.__supabaseLoadFailed=true;"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -239,9 +239,58 @@
     }
     .parse-preview table { font-size: 12px; }
     .parse-preview th, .parse-preview td { padding: 6px; }
+    /* 分页样式 */
+    .pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 6px;
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #eee;
+    }
+    .pagination button {
+      min-width: 36px;
+      height: 34px;
+      padding: 0 12px;
+      border: 1px solid #d9d9d9;
+      border-radius: 4px;
+      background: #fff;
+      color: #555;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .pagination button:hover { border-color: #1890ff; color: #1890ff; }
+    .pagination button.active {
+      background: #1890ff;
+      color: #fff;
+      border-color: #1890ff;
+      font-weight: 600;
+    }
+    .pagination button:disabled {
+      color: #bbb;
+      border-color: #eee;
+      cursor: not-allowed;
+      background: #fafafa;
+    }
+    .pagination button:disabled:hover { border-color: #eee; color: #bbb; }
+    .pagination .ellipsis {
+      min-width: 36px;
+      height: 34px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #999;
+      font-size: 13px;
+    }
     @media (max-width: 768px) {
       .form-row { grid-template-columns: 1fr; }
       .toolbar { flex-direction: column; align-items: flex-start; gap: 10px; }
+      .pagination button { min-width: 30px; height: 30px; padding: 0 8px; font-size: 12px; }
     }
   </style>
 </head>
@@ -654,7 +703,8 @@ let state = {
   message: null,
   messageType: null,
   modal: null, // { mode: 'add'|'edit', product: object }
-  readOnly: false
+  readOnly: false,
+  currentPage: 1
 };
 
 // ==================== 初始化 ====================
@@ -1120,12 +1170,22 @@ function renderAdmin() {
   `;
 }
 
+const ADMIN_PAGE_SIZE = 10;
+
 function renderKindPanel() {
   const kinds = getKinds();
   const kind = getCurrentKind();
   if (!kind) return '<div class="empty-state">当前分类没有配置子类型</div>';
-  const products = getFilteredProducts();
-  return `
+  const allProducts = getFilteredProducts();
+  const count = allProducts.length;
+  const totalPages = Math.ceil(count / ADMIN_PAGE_SIZE);
+  // 页码越界修正
+  if (state.currentPage > totalPages) state.currentPage = Math.max(1, totalPages);
+  if (state.currentPage < 1) state.currentPage = 1;
+  const startIdx = (state.currentPage - 1) * ADMIN_PAGE_SIZE;
+  const pageProducts = allProducts.slice(startIdx, startIdx + ADMIN_PAGE_SIZE);
+
+  let html = `
     ${kinds.length > 1 ? `
       <div class="kind-bar">
         ${kinds.map(k => {
@@ -1135,7 +1195,7 @@ function renderKindPanel() {
       </div>
     ` : ''}
     <div class="toolbar">
-      <div><strong>${kind.name}</strong>（共 ${products.length} 条）</div>
+      <div><strong>${kind.name}</strong>（共 ${count} 条）</div>
       <div class="bulk-actions">
         <button class="btn btn-default" onclick="downloadUploadTemplate()">📥 下载上传模板</button>
         <button class="btn btn-default" onclick="openBulkUploadModal()">📤 表格批量上传</button>
@@ -1148,7 +1208,7 @@ function renderKindPanel() {
           <tr><th>ID</th><th>图片</th><th>型号</th><th>制造商</th>${kind.filters.map(f => `<th>${escapeHtml(f.name)}</th>`).join('')}<th>参考价格</th><th>数据手册</th><th>备注</th><th>操作</th></tr>
         </thead>
         <tbody>
-          ${products.length ? products.map(p => `
+          ${pageProducts.length ? pageProducts.map(p => `
             <tr>
               <td>${p.id}</td>
               <td>${p.image_url ? `<img class="prod-img-preview" src="${escapeHtml(p.image_url)}" alt="">` : '-'}</td>
@@ -1168,6 +1228,45 @@ function renderKindPanel() {
       </table>
     </div>
   `;
+
+  // 分页控件
+  if (totalPages > 1) {
+    html += buildAdminPaginationHTML(totalPages);
+  }
+
+  return html;
+}
+
+function buildAdminPaginationHTML(totalPages) {
+  const cp = state.currentPage;
+  let btns = [];
+
+  btns.push(`<button data-page="${cp - 1}" ${cp <= 1 ? 'disabled' : ''}>上一页</button>`);
+
+  const pages = [];
+  pages.push(1);
+  for (let i = Math.max(2, cp - 2); i <= Math.min(totalPages - 1, cp + 2); i++) {
+    if (pages[pages.length - 1] !== i) pages.push(i);
+  }
+  if (totalPages > 1 && pages[pages.length - 1] !== totalPages) pages.push(totalPages);
+
+  const display = [];
+  for (let i = 0; i < pages.length; i++) {
+    if (i > 0 && pages[i] - pages[i-1] > 1) display.push('...');
+    display.push(pages[i]);
+  }
+
+  display.forEach(item => {
+    if (item === '...') {
+      btns.push(`<span class="ellipsis">...</span>`);
+    } else {
+      btns.push(`<button data-page="${item}" ${item === cp ? 'class="active"' : ''}>${item}</button>`);
+    }
+  });
+
+  btns.push(`<button data-page="${cp + 1}" ${cp >= totalPages ? 'disabled' : ''}>下一页</button>`);
+
+  return `<div class="pagination">${btns.join('')}</div>`;
 }
 
 function renderModal() {
@@ -1235,6 +1334,7 @@ function bindAdminEvents() {
   document.querySelectorAll('.cat-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       state.currentCategoryId = btn.dataset.id;
+      state.currentPage = 1;
       initCategoryAndKind();
       render();
     });
@@ -1242,7 +1342,21 @@ function bindAdminEvents() {
   document.querySelectorAll('.kind-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       state.currentKindKey = btn.dataset.key;
+      state.currentPage = 1;
       render();
+    });
+  });
+  // 分页点击事件
+  document.querySelectorAll('.pagination button[data-page]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const page = parseInt(btn.dataset.page);
+      if (!isNaN(page)) {
+        state.currentPage = page;
+        render();
+        // 滚动到表格区域
+        const tableWrap = document.querySelector('.table-wrap');
+        if (tableWrap) tableWrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     });
   });
 }
