@@ -280,10 +280,59 @@
       margin-bottom: 16px;
       font-size: 13px;
     }
+    /* 分页样式 */
+    .pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 6px;
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid #eee;
+    }
+    .pagination button {
+      min-width: 36px;
+      height: 34px;
+      padding: 0 12px;
+      border: 1px solid #d9d9d9;
+      border-radius: 4px;
+      background: #fff;
+      color: #555;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .pagination button:hover { border-color: #1890ff; color: #1890ff; }
+    .pagination button.active {
+      background: #1890ff;
+      color: #fff;
+      border-color: #1890ff;
+      font-weight: 600;
+    }
+    .pagination button:disabled {
+      color: #bbb;
+      border-color: #eee;
+      cursor: not-allowed;
+      background: #fafafa;
+    }
+    .pagination button:disabled:hover { border-color: #eee; color: #bbb; }
+    .pagination .ellipsis {
+      min-width: 36px;
+      height: 34px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #999;
+      font-size: 13px;
+    }
     @media (max-width: 768px) {
       .filter-section { flex: 0 0 140px; min-width: 140px; max-height: 280px; }
       .results-table { font-size: 12px; }
       .results-table th, .results-table td { padding: 8px 6px; }
+      .pagination button { min-width: 30px; height: 30px; padding: 0 8px; font-size: 12px; }
     }
   </style>
 </head>
@@ -702,7 +751,8 @@ let appState = {
   selectedFilters: {}, // { [filterKey]: Set }
   searchTerms: {},     // { [filterKey]: string }
   loading: true,
-  error: null
+  error: null,
+  currentPage: 1
 };
 
 // ==================== 初始化 ====================
@@ -759,6 +809,7 @@ function initCategoryAndKind() {
   appState.currentKindKey = kinds.length ? kinds[0].key : '';
   appState.selectedFilters = {};
   appState.searchTerms = {};
+  appState.currentPage = 1;
 }
 
 function getCategory() {
@@ -857,6 +908,7 @@ function renderFilters() {
       appState.currentKindKey = btn.dataset.key;
       appState.selectedFilters = {};
       appState.searchTerms = {};
+      appState.currentPage = 1;
       renderAll();
     });
   });
@@ -869,6 +921,7 @@ function renderFilters() {
       if (!appState.selectedFilters[key]) appState.selectedFilters[key] = new Set();
       if (cb.checked) appState.selectedFilters[key].add(val);
       else appState.selectedFilters[key].delete(val);
+      appState.currentPage = 1;
       renderResults();
     });
   });
@@ -885,6 +938,7 @@ function renderFilters() {
   panel.querySelectorAll('.filter-title .reset').forEach(btn => {
     btn.addEventListener('click', () => {
       delete appState.selectedFilters[btn.dataset.key];
+      appState.currentPage = 1;
       renderAll();
     });
   });
@@ -900,6 +954,8 @@ function getFilterOptions(filterKey) {
   });
   return Array.from(values).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 }
+
+const PAGE_SIZE = 10;
 
 function renderResults() {
   const panel = document.getElementById('results');
@@ -925,6 +981,13 @@ function renderResults() {
   });
 
   const count = products.length;
+  const totalPages = Math.ceil(count / PAGE_SIZE);
+  // 页码越界修正
+  if (appState.currentPage > totalPages) appState.currentPage = Math.max(1, totalPages);
+  if (appState.currentPage < 1) appState.currentPage = 1;
+  const startIdx = (appState.currentPage - 1) * PAGE_SIZE;
+  const pageProducts = products.slice(startIdx, startIdx + PAGE_SIZE);
+
   let html = `
     <div class="results-bar">
       <div class="results-count">共 <strong>${count}</strong> 个型号匹配</div>
@@ -942,7 +1005,7 @@ function renderResults() {
     });
     html += `<th>参考价格</th><th>数据手册</th><th>备注</th></tr></thead><tbody>`;
 
-    products.forEach(p => {
+    pageProducts.forEach(p => {
       html += `<tr>`;
       if (p.image_url) {
         html += `<td><img class="prod-img-thumb" src="${escapeHtml(p.image_url)}" alt="" onclick="openLightbox('${escapeHtml(p.image_url)}')"></td>`;
@@ -964,14 +1027,72 @@ function renderResults() {
       html += `</tr>`;
     });
     html += `</tbody></table></div>`;
+
+    // 分页控件
+    if (totalPages > 1) {
+      html += buildPaginationHTML(totalPages);
+    }
   }
 
   panel.innerHTML = html;
-  document.getElementById('clearAll').addEventListener('click', () => {
+
+  // 绑定事件
+  const clearAllBtn = document.getElementById('clearAll');
+  if (clearAllBtn) clearAllBtn.addEventListener('click', () => {
     appState.selectedFilters = {};
     appState.searchTerms = {};
+    appState.currentPage = 1;
     renderAll();
   });
+
+  // 绑定分页点击
+  panel.querySelectorAll('.pagination button[data-page]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const page = parseInt(btn.dataset.page);
+      if (!isNaN(page)) {
+        appState.currentPage = page;
+        renderResults();
+        // 滚动到结果区域顶部
+        document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  });
+}
+
+function buildPaginationHTML(totalPages) {
+  const cp = appState.currentPage;
+  let btns = [];
+
+  // 上一页
+  btns.push(`<button data-page="${cp - 1}" ${cp <= 1 ? 'disabled' : ''}>上一页</button>`);
+
+  // 页码逻辑：始终显示第1页、最后1页、当前页及其前后各2页
+  const pages = [];
+  pages.push(1);
+  for (let i = Math.max(2, cp - 2); i <= Math.min(totalPages - 1, cp + 2); i++) {
+    if (pages[pages.length - 1] !== i) pages.push(i);
+  }
+  if (totalPages > 1 && pages[pages.length - 1] !== totalPages) pages.push(totalPages);
+
+  // 添加省略号标记
+  const display = [];
+  for (let i = 0; i < pages.length; i++) {
+    if (i > 0 && pages[i] - pages[i-1] > 1) display.push('...');
+    display.push(pages[i]);
+  }
+
+  display.forEach(item => {
+    if (item === '...') {
+      btns.push(`<span class="ellipsis">...</span>`);
+    } else {
+      btns.push(`<button data-page="${item}" ${item === cp ? 'class="active"' : ''}>${item}</button>`);
+    }
+  });
+
+  // 下一页
+  btns.push(`<button data-page="${cp + 1}" ${cp >= totalPages ? 'disabled' : ''}>下一页</button>`);
+
+  return `<div class="pagination">${btns.join('')}</div>`;
 }
 
 
