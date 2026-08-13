@@ -247,8 +247,20 @@
       border-radius: 4px;
       text-decoration: none;
       font-size: 12px;
+      cursor: pointer;
     }
     .datasheet-link:hover { background: #40a9ff; }
+    .datasheet-icon-disabled {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      background: #e8e8e8;
+      color: #bbb;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: default;
+    }
     .empty-state {
       text-align: center;
       padding: 60px 20px;
@@ -947,7 +959,7 @@ function renderResults() {
       if (p.datasheet_url) {
         html += `<td><a class="datasheet-link" href="${escapeHtml(p.datasheet_url)}" target="_blank">📄 数据手册</a></td>`;
       } else {
-        html += `<td class="no-datasheet">暂无</td>`;
+        html += `<td><span class="datasheet-icon-disabled">📄 数据手册</span></td>`;
       }
       html += `<td class="remarks-cell">${escapeHtml(p.remarks || '-')}</td>`;
       html += `</tr>`;
