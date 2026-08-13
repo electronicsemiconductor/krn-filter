@@ -922,7 +922,7 @@ function renderFilters() {
       if (cb.checked) appState.selectedFilters[key].add(val);
       else appState.selectedFilters[key].delete(val);
       appState.currentPage = 1;
-      renderResults();
+      renderAll(); // 重新渲染筛选面板，让其他列联动收窄
     });
   });
 
@@ -944,14 +944,37 @@ function renderFilters() {
   });
 }
 
-function getFilterOptions(filterKey) {
+// 返回满足「除 excludeKey 外所有已选筛选条件」的产品子集（级联联动核心）
+function getProductsMatchingOthers(excludeKey) {
   const currentKind = getCurrentKind();
-  const products = appState.products.filter(p => p.category === appState.currentCategoryId && p.kind === appState.currentKindKey);
+  let products = appState.products.filter(p =>
+    p.category === appState.currentCategoryId && p.kind === appState.currentKindKey
+  );
+  Object.keys(appState.selectedFilters).forEach(key => {
+    if (key === excludeKey) return; // 跳过自身，避免本列选择影响本列可选值
+    const selected = appState.selectedFilters[key];
+    if (selected && selected.size) {
+      products = products.filter(p => {
+        const v = p.spec_data?.[key];
+        return v !== undefined && selected.has(String(v));
+      });
+    }
+  });
+  return products;
+}
+
+// 某列的可选值 = 满足其他已选条件的产品子集，在该维度上的去重值
+// 已勾选的值始终保留显示，避免用户选择突然消失
+function getFilterOptions(filterKey) {
+  const products = getProductsMatchingOthers(filterKey);
   const values = new Set();
   products.forEach(p => {
     const v = p.spec_data?.[filterKey];
     if (v !== undefined && v !== null && v !== '') values.add(String(v));
   });
+  // 始终保留本列已选中的值（即使因其他列变化导致它暂时不共存）
+  const selected = appState.selectedFilters[filterKey];
+  if (selected) selected.forEach(v => values.add(v));
   return Array.from(values).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 }
 
