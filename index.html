@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="version" content="2026-08-14-2038-pagination">
+  <meta name="version" content="2026-08-14-2050-destructure-fix">
   <title>KRN科瑞诺参数筛选器</title>
   <script src="./supabase.min.js" onerror="window.__supabaseLoadFailed=true;"></script>
   <style>
@@ -779,7 +779,8 @@ async function init() {
 
   if (_supabaseClient) {
     try {
-      const [{ data: cats, error: err1 }, { data: prods, error: err2 }] = await Promise.all([
+      // 注意：分页 IIFE 返回的是数组本身，不能用 {data, error} 对象解构
+      const [catsResult, prods] = await Promise.all([
         _supabaseClient.from('categories').select('*'),
         // Supabase 免费版单次查询上限 1000 条，用原生 fetch 分页循环获取全部产品
         (async () => {
@@ -801,12 +802,13 @@ async function init() {
           return allProds;
         })()
       ]);
+      const cats = catsResult?.data;
+      const err1 = catsResult?.error;
       if (err1) throw err1;
-      if (err2) throw err2;
-      if (cats && cats.length && prods) {
+      if (cats && cats.length && Array.isArray(prods)) {
         appState.categories = cats;
         appState.products = prods;
-        console.log('[KRN版本2026-08-14-2038] 已加载产品总数:', prods.length);
+        console.log('[KRN版本2026-08-14-2050] 已加载产品总数:', prods.length);
         initCategoryAndKind();
         appState.selectedFilters = {};
         appState.searchTerms = {};
