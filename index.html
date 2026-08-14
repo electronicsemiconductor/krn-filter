@@ -780,18 +780,21 @@ async function init() {
     try {
       const [{ data: cats, error: err1 }, { data: prods, error: err2 }] = await Promise.all([
         _supabaseClient.from('categories').select('*'),
-        // Supabase 免费版单次查询上限 1000 条，用分页循环获取全部产品
+        // Supabase 免费版单次查询上限 1000 条，用原生 fetch 分页循环获取全部产品
         (async () => {
           let allProds = [];
           let from = 0, pageSize = 1000;
+          const supabaseUrl = 'https://xbevlbuhrnzmtfmseqsj.supabase.co';
+          const supabaseKey = 'sb_publishable_hclTTu_Tn46Z8l3FG2U9mQ_jSXr7wl-';
           while (true) {
-            const { data, error, count } = await _supabaseClient
-              .from('products')
-              .select('*', { count: 'exact' })
-              .range(from, from + pageSize - 1);
-            if (error) throw error;
-            if (data && data.length) allProds = allProds.concat(data);
-            if (!data || data.length < pageSize) break; // 已到末页
+            const res = await fetch(
+              supabaseUrl + '/rest/v1/products?select=*&order=id.asc&offset=' + from + '&limit=' + pageSize,
+              { headers: { 'apikey': supabaseKey, 'Authorization': 'Bearer ' + supabaseKey } }
+            );
+            if (!res.ok) throw new Error('products fetch status=' + res.status);
+            const batch = await res.json();
+            if (batch && batch.length) allProds = allProds.concat(batch);
+            if (!batch || batch.length < pageSize) break;
             from += pageSize;
           }
           return allProds;
