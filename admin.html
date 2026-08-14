@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>KRN科瑞诺参数筛选器 - 后台管理</title>
-  <meta name="version" content="2026-08-13-2130">
+  <meta name="version" content="2026-08-14-2200-pagination-fix">
   <script src="./supabase.min.js" onerror="window.__supabaseLoadFailed=true;"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -738,15 +738,34 @@ async function loadData() {
     return;
   }
   try {
-    const [{ data: cats, error: err1 }, { data: prods, error: err2 }] = await Promise.all([
+    const [catsResult, prods] = await Promise.all([
       _supabaseClient.from('categories').select('*'),
-      _supabaseClient.from('products').select('*')
+      (async () => {
+        let allProds = []; let from = 0, pageSize = 1000;
+        const supabaseUrl = 'https://xbevlbuhrnzmtfmseqsj.supabase.co';
+        const supabaseKey = 'sb_publishable_hclTTu_Tn46Z8l3FG2U9mQ_jSXr7wl-';
+        while (true) {
+          const res = await fetch(supabaseUrl + '/rest/v1/products?select=*&order=id.asc&offset=' + from + '&limit=' + pageSize,
+            { headers: { 'apikey': supabaseKey, 'Authorization': 'Bearer ' + supabaseKey } });
+          if (!res.ok) throw new Error('products fetch status=' + res.status);
+          const batch = await res.json();
+          if (batch && batch.length) allProds = allProds.concat(batch);
+          if (!batch || batch.length < pageSize) break;
+          from += pageSize;
+        }
+        return allProds;
+      })()
     ]);
-    if (err1) throw err1;
-    if (err2) throw err2;
-    state.categories = cats || [];
-    state.products = prods || [];
-    initCategoryAndKind();
+    const cats = catsResult?.data;
+    if (catsResult?.error) throw catsResult.error;
+    if (cats && cats.length && Array.isArray(prods)) {
+      state.categories = cats;
+      state.products = prods;
+      console.log('[KRN后台版本2026-08-14-2200] 已加载产品总数:', prods.length);
+      initCategoryAndKind();
+    } else {
+      throw new Error('数据格式异常: cats=' + !!cats + ' prods=' + (Array.isArray(prods) ? prods.length : typeof prods));
+    }
   } catch (e) {
     console.error(e);
     showMessage('数据库连接失败：' + e.message + '，已切换到内嵌示例数据（只读）', 'error');
