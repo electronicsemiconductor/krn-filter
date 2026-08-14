@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="version" content="2026-08-14-2038-pagination">
   <title>KRN科瑞诺参数筛选器</title>
   <script src="./supabase.min.js" onerror="window.__supabaseLoadFailed=true;"></script>
   <style>
@@ -805,6 +806,7 @@ async function init() {
       if (cats && cats.length && prods) {
         appState.categories = cats;
         appState.products = prods;
+        console.log('[KRN版本2026-08-14-2038] 已加载产品总数:', prods.length);
         initCategoryAndKind();
         appState.selectedFilters = {};
         appState.searchTerms = {};
