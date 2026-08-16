@@ -635,8 +635,24 @@ const FALLBACK_DATA = {
       id: 'switch_interface', name: '开关芯片及接口芯片', display_name: '开关芯片及接口芯片',
       kinds_config: {
         kinds: [
-          { key: 'default', name: '开关芯片及接口芯片', filters: [
-            {key:'kind', name:'种类', type:'checkbox'},
+          { key: 'analog_switch', name: '模拟开关', filters: [
+            {key:'switch_circuit', name:'开关电路', type:'checkbox'},
+            {key:'package', name:'Package', type:'checkbox'}
+          ]},
+          { key: 'electronic_switch', name: '电子开关', filters: [
+            {key:'package', name:'Package', type:'checkbox'}
+          ]},
+          { key: 'rf_switch', name: '射频开关', filters: [
+            {key:'package', name:'Package', type:'checkbox'}
+          ]},
+          { key: 'usb_load_switch', name: 'USB功率及负载开关', filters: [
+            {key:'enable_logic', name:'Enable Logic', type:'checkbox'},
+            {key:'package', name:'Package', type:'checkbox'}
+          ]},
+          { key: 'rs232', name: 'RS232芯片(收发器)', filters: [
+            {key:'package', name:'Package', type:'checkbox'}
+          ]},
+          { key: 'rs485', name: 'RS-485/RS-422芯片(收发器)', filters: [
             {key:'package', name:'Package', type:'checkbox'}
           ]}
         ]
@@ -736,11 +752,11 @@ const FALLBACK_DATA = {
     {category:'opamp', kind:'comparator', model:'LM393', manufacturer:'TI', spec_data:{power_supply:'2V-36V', rail_to_rail:'NO', channel:'2-Line', iq:'0.8mA', max_vos:'5mV', package:'SOP-8'}, price:'0.15', datasheet_url:'', image_url:'', remarks:''},
     {category:'mos', kind:'default', model:'AO3400', manufacturer:'AOS', spec_data:{kind:'N-Ch', package:'SOT-23', with_esd:'NO', vds:'30V', vgs:'12V', id:'5.7A', vgs_th:'1.4V', rds_on:'28mΩ'}, price:'0.08', datasheet_url:'', image_url:'', remarks:''},
     {category:'tvs', kind:'default', model:'SMAJ5.0A', manufacturer:'Littelfuse', spec_data:{kind:'SMAJ', package:'DO-214AC', uni_bi:'UNI', vrwm:'5V', pppm:'400W', vbr_min:'6.4V', vbr_max:'7.07V', ir:'800μA'}, price:'0.12', datasheet_url:'', image_url:'', remarks:''},
-    {category:'switch_interface', kind:'default', model:'SGM3157', manufacturer:'SGMICRO', spec_data:{kind:'模拟开关', package:'SC-70-6'}, price:'0.18', datasheet_url:'', image_url:'', remarks:''},
-    {category:'switch_interface', kind:'default', model:'CH440R', manufacturer:'WCH', spec_data:{kind:'USB功率及负载开关', package:'SOP-8'}, price:'0.65', datasheet_url:'', image_url:'', remarks:''},
-    {category:'switch_interface', kind:'default', model:'SP3485EN', manufacturer:'MaxLinear', spec_data:{kind:'RS-485/RS-422芯片(收发器)', package:'SOP-8'}, price:'0.42', datasheet_url:'', image_url:'', remarks:''},
-    {category:'switch_interface', kind:'default', model:'MAX3232', manufacturer:'TI', spec_data:{kind:'RS232芯片(收发器)', package:'SOP-16'}, price:'0.85', datasheet_url:'', image_url:'', remarks:''},
-    {category:'switch_interface', kind:'default', model:'PE4259', manufacturer:'Peregrine', spec_data:{kind:'射频开关', package:'SOT-23-6'}, price:'0.55', datasheet_url:'', image_url:'', remarks:''},
+    {category:'switch_interface', kind:'analog_switch', model:'SGM3157', manufacturer:'SGMICRO', spec_data:{package:'SC-70-6'}, price:'0.18', datasheet_url:'', image_url:'', remarks:''},
+    {category:'switch_interface', kind:'usb_load_switch', model:'CH440R', manufacturer:'WCH', spec_data:{package:'SOP-8'}, price:'0.65', datasheet_url:'', image_url:'', remarks:''},
+    {category:'switch_interface', kind:'rs485', model:'SP3485EN', manufacturer:'MaxLinear', spec_data:{package:'SOP-8'}, price:'0.42', datasheet_url:'', image_url:'', remarks:''},
+    {category:'switch_interface', kind:'rs232', model:'MAX3232', manufacturer:'TI', spec_data:{package:'SOP-16'}, price:'0.85', datasheet_url:'', image_url:'', remarks:''},
+    {category:'switch_interface', kind:'rf_switch', model:'PE4259', manufacturer:'Peregrine', spec_data:{package:'SOT-23-6'}, price:'0.55', datasheet_url:'', image_url:'', remarks:''},
     {category:'sensor', kind:'ambient_light', model:'APDS-9960', manufacturer:'Avago', spec_data:{vceo:'30V', lambda_p:'550nm', tr:'15μs', pc:'70mW', topr:'-30℃~85℃', package:'SMD'}, price:'1.20', datasheet_url:'', image_url:'', remarks:''},
     {category:'sensor', kind:'current', model:'ACS712', manufacturer:'Allegro', spec_data:{vcc:'5V', icc:'11.18mA', ip:'±5A', sens:'400mV/A', ta:'-40℃~150℃', package:'SOP-8'}, price:'1.50', datasheet_url:'', image_url:'', remarks:''},
     {category:'sensor', kind:'fiber_laser', model:'ADNS-9800', manufacturer:'PixArt', spec_data:{vcc:'2.5V~3.6V', lsb0:'7ps@DOUBLE_RES', lsb1:'37ps@DOUBLE_RES', tm:'3.5ns~2.4μs', ta:'-40℃~125℃', package:'QFN-32'}, price:'3.20', datasheet_url:'', image_url:'', remarks:''},
