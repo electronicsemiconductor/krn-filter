@@ -2,11 +2,9 @@ name: Supabase Keep-Alive
 
 on:
   schedule:
-    # 每 5 天跑一次（UTC 04:17），小于 7 天暂停窗口
     - cron: '17 4 */5 * *'
   workflow_dispatch: {}
 
-# 允许 workflow 自身往仓库提交（自活跃）
 permissions:
   contents: write
 
@@ -19,7 +17,7 @@ jobs:
 
       - name: Ping all Supabase projects
         id: ping
-        continue-on-error: true  # ← ping 失败不阻断后续步骤
+        continue-on-error: true
         run: |
           declare -a PROJECTS=(
             "https://xbevlbuhrnzmtfmseqsj.supabase.co|sb_publishable_hclTTu_Tn46Z8l3FG2U9mQ_jSXr7wl-"
@@ -41,7 +39,7 @@ jobs:
           done
           echo "fail=$FAIL" >> "$GITHUB_OUTPUT"
 
-      - name: Keep repo active (提交心跳时间戳)  # ← 无论 ping 成败都执行
+      - name: Keep repo active (提交心跳时间戳)
         run: |
           date -u > last-ping.txt
           git config user.name "github-actions[bot]"
