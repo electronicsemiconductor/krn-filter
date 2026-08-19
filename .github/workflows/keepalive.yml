@@ -2,15 +2,21 @@ name: Supabase Keep-Alive
 
 on:
   schedule:
-    # 每 5 天跑一次（UTC 04:17，落在每月 1/6/11/16/21/26/31 日），留足余量小于 7 天暂停窗口
     - cron: '17 4 */5 * *'
   workflow_dispatch: {}
+
+permissions:
+  contents: write
 
 jobs:
   keepalive:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repo (用于自活跃提交)
+        uses: actions/checkout@v4
+
       - name: Ping all Supabase projects
+        id: ping
         run: |
           declare -a PROJECTS=(
             "https://xbevlbuhrnzmtfmseqsj.supabase.co|sb_publishable_hclTTu_Tn46Z8l3FG2U9mQ_jSXr7wl-"
@@ -19,12 +25,30 @@ jobs:
             "https://xafihsvikmiiauszkstq.supabase.co|sb_publishable_eVwVm1npRqA1k3gFkn4whA_2DD-drVZ"
             "https://koaifvgkjakaiiodiyyg.supabase.co|sb_publishable_MPzPeNT3vjjLDlAChNqAUg_ehqMT3RQ"
           )
+          FAIL=0
           for entry in "${PROJECTS[@]}"; do
             url="${entry%%|*}"
             key="${entry##*|}"
-            code=$(curl -s -o /dev/null -w "%{http_code}" \
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 \
               -H "apikey: ${key}" \
               -H "Authorization: Bearer ${key}" \
               "${url}/rest/v1/products?select=id&limit=1")
             echo "$(date -u) ${url} -> HTTP ${code}"
+            [ "$code" = "200" ] || FAIL=1
           done
+          echo "fail=$FAIL" >> "$GITHUB_OUTPUT"
+
+      - name: Keep repo active (提交心跳时间戳)
+        run: |
+          date -u > last-ping.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add last-ping.txt
+          git commit -m "ci: keepalive ping $(date -u)" || echo "nothing to commit"
+          git push
+
+      - name: 报告 ping 失败
+        if: steps.ping.outputs.fail == '1'
+        run: |
+          echo "::error::有 Supabase 项目未返回 HTTP 200，可能已被暂停，请到 Dashboard 检查"
+          exit 1
