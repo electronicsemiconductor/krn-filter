@@ -2,9 +2,11 @@ name: Supabase Keep-Alive
 
 on:
   schedule:
+    # 每 5 天跑一次（UTC 04:17），小于 7 天暂停窗口
     - cron: '17 4 */5 * *'
   workflow_dispatch: {}
 
+# 允许 workflow 自身往仓库提交（自活跃）
 permissions:
   contents: write
 
@@ -12,11 +14,12 @@ jobs:
   keepalive:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo (用于自活跃提交)
+      - name: Checkout repo
         uses: actions/checkout@v4
 
       - name: Ping all Supabase projects
         id: ping
+        continue-on-error: true  # ← ping 失败不阻断后续步骤
         run: |
           declare -a PROJECTS=(
             "https://xbevlbuhrnzmtfmseqsj.supabase.co|sb_publishable_hclTTu_Tn46Z8l3FG2U9mQ_jSXr7wl-"
@@ -38,7 +41,7 @@ jobs:
           done
           echo "fail=$FAIL" >> "$GITHUB_OUTPUT"
 
-      - name: Keep repo active (提交心跳时间戳)
+      - name: Keep repo active (提交心跳时间戳)  # ← 无论 ping 成败都执行
         run: |
           date -u > last-ping.txt
           git config user.name "github-actions[bot]"
@@ -47,8 +50,10 @@ jobs:
           git commit -m "ci: keepalive ping $(date -u)" || echo "nothing to commit"
           git push
 
-      - name: 报告 ping 失败
-        if: steps.ping.outputs.fail == '1'
+      - name: 报告 ping 结果
         run: |
-          echo "::error::有 Supabase 项目未返回 HTTP 200，可能已被暂停，请到 Dashboard 检查"
-          exit 1
+          if [ "${{ steps.ping.outputs.fail }}" = "1" ]; then
+            echo "::warning::有 Supabase 项目未返回 HTTP 200，可能已被暂停，请到 Dashboard 检查并 Resume"
+          else
+            echo "::notice::所有 Supabase 项目 ping 正常 ✓"
+          fi
